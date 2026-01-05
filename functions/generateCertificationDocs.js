@@ -1,18 +1,3 @@
-/**
- * generateCertificationDocs.js
- * 
- * PURPOSE:
- * Generate certification documents using Google Docs templates
- * and export as PDFs with patient data filled in.
- * 
- * APPROACH:
- * 1. Copy Google Doc template
- * 2. Replace merge fields with patient data
- * 3. Export as PDF
- * 4. Store in Cloud Storage
- * 5. Log in Firestore history
- */
-
 const { onCall } = require('firebase-functions/v2/https');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, Timestamp } = require('firebase-admin/firestore');

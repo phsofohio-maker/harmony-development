@@ -127,7 +127,7 @@ const DocumentsPage = () => {
     
     try {
       // Call Cloud Function to generate document set
-      const generateDocumentSet = httpsCallable(functions, 'generateDocumentSet');
+      const generateDocumentSet = httpsCallable(functions, 'generateCertificationDocs');
       const result = await generateDocumentSet({
         patientId: selectedPatient.id,
         orgId
@@ -168,8 +168,8 @@ const DocumentsPage = () => {
     setGenerationStatus({ type: 'info', message: `Generating ${template.name}...` });
     
     try {
-      const generateDocument = httpsCallable(functions, 'generateDocument');
-      const result = await generateDocument({
+      const generateDocument = httpsCallable(functions, 'generateCertificationDocs');
+            const result = await generateDocument({
         patientId: selectedPatient.id,
         templateType: template.id,
         orgId

@@ -10,7 +10,7 @@ const { initializeApp, getApp } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
 const nodemailer = require('nodemailer');
 const { defineSecret } = require('firebase-functions/params');
-
+const { generateCertificationDocs } = require('./generateCertificationDocs');
 // Initialize Firebase Admin (check if already initialized)
 try {
   getApp();
@@ -699,147 +699,6 @@ exports.testEmail = onCall({
   }
 });
 
-/**
- * Cloud Functions for Harmony Health Care Assistant
- */
-exports.generateCertificationDocs = onCall(async (request) => {
-  const { patientId, documentType, customData = {} } = request.data;
-  const userId = request.auth?.uid;
-  const orgId = request.auth?.token?.orgId;
-
-  // Validate input
-  if (!patientId || !documentType) {
-    throw new Error('Missing required parameters: patientId and documentType');
-  }
-
-  if (!orgId) {
-    throw new Error('User does not have organization access');
-  }
-
-  try {
-    // 1. Fetch patient data
-    const patientDoc = await db.collection('patients').doc(patientId).get();
-    if (!patientDoc.exists) {
-      throw new Error('Patient not found');
-    }
-    const patient = patientDoc.data();
-
-    // Verify patient belongs to user's organization
-    if (patient.organizationId !== orgId) {
-      throw new Error('Unauthorized access to patient');
-    }
-
-    // 2. Get template ID from organization settings
-    const orgDoc = await db.collection('organizations').doc(orgId).get();
-    const templates = orgDoc.data()?.settings?.documentTemplates || {};
-    const templateId = templates[documentType];
-
-    if (!templateId) {
-      throw new Error(`Template not configured for ${documentType}`);
-    }
-
-    // 3. Prepare merge data
-    const mergeData = prepareMergeData(patient, documentType, customData);
-
-    // 4. Generate document
-    const auth = await getServiceAccountAuth();
-    const docs = google.docs({ version: 'v1', auth });
-    const drive = google.drive({ version: 'v3', auth });
-
-    // Copy template
-    const copyResponse = await drive.files.copy({
-      fileId: templateId,
-      requestBody: {
-        name: `${documentType}_${patient.name}_${new Date().toISOString().split('T')[0]}`
-      }
-    });
-    const newDocId = copyResponse.data.id;
-
-    // Get document content
-    const docResponse = await docs.documents.get({ documentId: newDocId });
-
-    // Prepare batch update requests
-    const requests = createReplaceRequests(docResponse.data, mergeData);
-
-    // Apply replacements
-    if (requests.length > 0) {
-      await docs.documents.batchUpdate({
-        documentId: newDocId,
-        requestBody: { requests }
-      });
-    }
-
-    // 5. Export as PDF
-    const pdfResponse = await drive.files.export({
-      fileId: newDocId,
-      mimeType: 'application/pdf'
-    }, {
-      responseType: 'stream'
-    });
-
-    // 6. Upload to Cloud Storage
-    const fileName = `documents/${orgId}/${patientId}/${documentType}_${Date.now()}.pdf`;
-    const bucket = storage.bucket();
-    const file = bucket.file(fileName);
-
-    await new Promise((resolve, reject) => {
-      pdfResponse.data
-        .pipe(file.createWriteStream({
-          metadata: {
-            contentType: 'application/pdf',
-            metadata: {
-              patientId,
-              documentType,
-              generatedBy: userId,
-              generatedAt: new Date().toISOString()
-            }
-          }
-        }))
-        .on('error', reject)
-        .on('finish', resolve);
-    });
-
-    // Get signed URL (valid for 7 days)
-    const [url] = await file.getSignedUrl({
-      action: 'read',
-      expires: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 days
-    });
-
-    // 7. Log in Firestore history
-    const historyRef = await db.collection('organizations')
-      .doc(orgId)
-      .collection('documentHistory')
-      .add({
-        patientId,
-        patientName: patient.name,
-        documentType,
-        fileName,
-        downloadUrl: url,
-        generatedBy: userId,
-        generatedAt: Timestamp.now(),
-        expiresAt: Timestamp.fromMillis(Date.now() + 7 * 24 * 60 * 60 * 1000)
-      });
-
-    // Clean up temporary Google Doc (optional)
-    // await drive.files.delete({ fileId: newDocId });
-
-    return {
-      success: true,
-      documentId: historyRef.id,
-      fileName,
-      downloadUrl: url,
-      message: `${documentType} generated successfully`
-    };
-
-  } catch (error) {
-    console.error('Error generating document:', error);
-    throw new Error(`Failed to generate document: ${error.message}`);
-  }
-});
-
-/**
- * Get service account authentication for Google APIs
- */
 async function getServiceAccountAuth() {
   const auth = new google.auth.GoogleAuth({
     scopes: [
@@ -1014,3 +873,5 @@ function calculateTreatmentDuration(admissionDate) {
   const months = Math.floor((Date.now() - admission.getTime()) / (30 * 24 * 60 * 60 * 1000));
   return months > 0 ? `${months} months` : 'less than 1 month';
 }
+
+exports.generateCertificationDocs = generateCertificationDocs;
