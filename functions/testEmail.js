@@ -1,31 +1,24 @@
 /**
- * Test Email Function - CORS Enabled
- * Manually trigger to verify email configuration works
+ * Test Email Function - Using onCall (CORS-free!)
  * Deploy with: firebase deploy --only functions:testEmail
+ * 
+ * onCall automatically handles CORS and authentication
  */
 
-const { onRequest } = require('firebase-functions/v2/https');
+const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const nodemailer = require('nodemailer');
 
-exports.testEmail = onRequest(
+exports.testEmail = onCall(
   {
     secrets: ['EMAIL_USER', 'EMAIL_PASS'],
-    region: 'us-central1',
-    // CORS configuration for Firebase Studio and localhost
-    cors: [
-      'https://3000-firebase-harmony-dashboard-1766516274763.cluster-lrr5y7z5yndkqxji6hu4ekvtbq.cloudworkstations.dev',
-      /^https:\/\/.*-firebase-.*\.cloudworkstations\.dev$/,  // Any Firebase Studio URL
-      'http://localhost:3000',
-      'http://localhost:5000',
-      'http://localhost:5173'
-    ]
+    region: 'us-central1'
   },
-  async (req, res) => {
-    console.log('📧 Starting email test...');
-    console.log('📍 Request origin:', req.headers.origin);
+  async (request) => {
+    console.log('📧 Starting email test via onCall...');
+    console.log('👤 Auth UID:', request.auth?.uid || 'Not authenticated');
 
     try {
-      // Create transporter with environment variables
+      // Create transporter
       const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
@@ -34,16 +27,23 @@ exports.testEmail = onRequest(
         },
       });
 
-      // Verify transporter configuration
+      // Verify transporter
       console.log('🔍 Verifying transporter...');
       await transporter.verify();
-      console.log('✅ Transporter verified successfully');
+      console.log('✅ Transporter verified');
 
       // Test email details
       const testEmailList = [
         'kobet@parrishhealthsystems.org',
         'phsofohio@gmail.com'
       ];
+
+      const now = new Date();
+      const estTime = now.toLocaleString('en-US', { 
+        timeZone: 'America/New_York',
+        dateStyle: 'full',
+        timeStyle: 'long'
+      });
 
       const mailOptions = {
         from: {
@@ -82,11 +82,15 @@ exports.testEmail = onRequest(
                 </tr>
                 <tr>
                   <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; color: #6b7280;">Test Time:</td>
-                  <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} EST</strong></td>
+                  <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>${estTime}</strong></td>
                 </tr>
                 <tr>
                   <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; color: #6b7280;">Recipients:</td>
                   <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>${testEmailList.length}</strong></td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; color: #6b7280;">Triggered By:</td>
+                  <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>${request.auth?.uid || 'System'}</strong></td>
                 </tr>
               </table>
               
@@ -119,8 +123,9 @@ Harmony Health Care Assistant
 
 System Information:
 - Sender: ${process.env.EMAIL_USER}
-- Test Time: ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} EST
+- Test Time: ${estTime}
 - Recipients: ${testEmailList.length}
+- Triggered By: ${request.auth?.uid || 'System'}
 
 All Systems Operational
 Your daily certification notifications and weekly summaries are configured correctly and ready to send.
@@ -138,29 +143,24 @@ Parrish Health Systems
       console.log('📬 Message ID:', info.messageId);
 
       // Return success response
-      res.status(200).json({
+      return {
         success: true,
-        message: 'Test email sent successfully',
+        message: 'Test email sent successfully! Check your inbox.',
         details: {
           messageId: info.messageId,
           recipients: testEmailList,
           sender: process.env.EMAIL_USER,
-          timestamp: new Date().toISOString()
+          timestamp: now.toISOString()
         }
-      });
+      };
 
     } catch (error) {
       console.error('❌ Email test failed:', error);
       
-      // Return detailed error information
-      res.status(500).json({
-        success: false,
-        message: 'Email test failed',
-        error: {
-          message: error.message,
-          code: error.code,
-          command: error.command
-        },
+      // Throw HttpsError for proper client-side handling
+      throw new HttpsError('internal', 'Email test failed', {
+        message: error.message,
+        code: error.code,
         troubleshooting: {
           checkEmailUser: 'Verify EMAIL_USER secret is set correctly',
           checkEmailPass: 'Verify EMAIL_PASS is your Gmail App Password (not regular password)',

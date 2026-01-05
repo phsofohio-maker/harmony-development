@@ -22,7 +22,7 @@ const firebaseConfig = {
   projectId: "parrish-harmonyhca",
   storageBucket: "parrish-harmonyhca.firebasestorage.app",
   messagingSenderId: "1062012852590",
-  appId: "1:1062012852590:web:e0b39f25fe2a7e8e86c97f",
+  appId: "1:1062012852590:web:5e71eb29c86ea3ad3c3db1",
   measurementId: "G-Q9Q5SX1XKJ"
 };
 
@@ -33,7 +33,7 @@ const app = initializeApp(firebaseConfig);
 // Initialize services
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const functions = getFunctions(app);
+export const functions = getFunctions(app, 'us-central1');
 
 // Connect to emulators in development (optional)
 if (import.meta.env.DEV && import.meta.env.VITE_USE_EMULATORS === 'true') {

@@ -1,20 +1,18 @@
 /**
  * NotificationsPage.jsx - Notification Management & History
- * 
- * PURPOSE:
- * - View notification history (sent emails)
- * - Toggle notification preferences
- * - Test email functionality
- * - Monitor Cloud Function status
+ * Fixed: setEmailTestResult → setTestResult
  */
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, getDoc, updateDoc, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { db, functions } from '../lib/firebase';
+import { httpsCallable } from 'firebase/functions';
 
 const NotificationsPage = () => {
-  const { user, userProfile, organization } = useAuth();
+  const { userProfile } = useAuth();
+  
+  // State
   const [settings, setSettings] = useState({
     dailyAlerts: true,
     weeklySummary: true,
@@ -25,13 +23,13 @@ const NotificationsPage = () => {
   });
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState(null);
+  const [testResult, setTestResult] = useState(null); // THIS IS THE CORRECT STATE VARIABLE
   const [newEmail, setNewEmail] = useState('');
   
   const orgId = userProfile?.organizationId || 'org_parrish';
 
+  // Load data on mount
   useEffect(() => {
     loadData();
   }, [orgId]);
@@ -73,6 +71,7 @@ const NotificationsPage = () => {
     }
   };
 
+  // Toggle notification settings
   const handleToggle = async (field) => {
     const newValue = !settings[field];
     setSettings(prev => ({ ...prev, [field]: newValue }));
@@ -87,6 +86,7 @@ const NotificationsPage = () => {
     }
   };
 
+  // Update lead days
   const handleLeadDaysChange = async (value) => {
     const days = parseInt(value) || 14;
     setSettings(prev => ({ ...prev, leadDays: days }));
@@ -100,6 +100,7 @@ const NotificationsPage = () => {
     }
   };
 
+  // Add email to list
   const addEmail = async () => {
     if (!newEmail || !newEmail.includes('@')) return;
     if (settings.emailList.includes(newEmail)) return;
@@ -117,6 +118,7 @@ const NotificationsPage = () => {
     }
   };
 
+  // Remove email from list
   const removeEmail = async (email) => {
     const updated = settings.emailList.filter(e => e !== email);
     setSettings(prev => ({ ...prev, emailList: updated }));
@@ -130,6 +132,7 @@ const NotificationsPage = () => {
     }
   };
 
+  // Send test email - FIXED VERSION
   const sendTestEmail = async () => {
     if (settings.emailList.length === 0) {
       setTestResult({ success: false, message: 'Add at least one email recipient first' });
@@ -140,32 +143,18 @@ const NotificationsPage = () => {
     setTestResult(null);
     
     try {
-      // Get the current user's ID token
-      const idToken = await auth.currentUser.getIdToken();
+      // Call the Cloud Function
+      const testEmailFunction = httpsCallable(functions, 'testEmail');
+      const result = await testEmailFunction({ orgId });
       
-      // Call the HTTP function with auth token
-      const response = await fetch(
-        'https://us-central1-parrish-harmonyhca.cloudfunctions.net/testEmail',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`
-          },
-          body: JSON.stringify({ orgId })
-        }
-      );
-      
-      const result = await response.json();
-      
-      if (response.ok && result.success) {
+      if (result.data.success) {
         setTestResult({
           success: true,
-          message: result.message || `Test email sent to ${settings.emailList.length} recipient(s)!`
+          message: result.data.message || `Test email sent to ${settings.emailList.length} recipient(s)!`
         });
         loadData(); // Refresh history
       } else {
-        throw new Error(result.error || 'Failed to send test email');
+        throw new Error(result.data.error || 'Failed to send test email');
       }
       
     } catch (error) {
@@ -179,76 +168,119 @@ const NotificationsPage = () => {
     }
   };
 
+  // Format date helper
+  const formatDate = (date) => {
+    if (!date) return 'N/A';
+    return new Date(date).toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  };
+
+  // Get type icon
   const getTypeIcon = (type) => {
     switch (type) {
-      case 'daily': return '📅';
-      case 'weekly': return '📊';
-      case 'huv': return '🏥';
-      case 'f2f': return '👨‍⚕️';
-      case 'test': return '🧪';
+      case 'certification_alert': return '📋';
+      case 'weekly_summary': return '📊';
+      case 'f2f_alert': return '👤';
+      case 'huv_report': return '🏥';
+      case 'test_email': return '🧪';
       default: return '📧';
     }
   };
 
+  // Get type badge
   const getTypeBadge = (type) => {
-    const styles = {
-      daily: { bg: '#dbeafe', color: '#1e40af' },
-      weekly: { bg: '#f3e8ff', color: '#6b21a8' },
-      huv: { bg: '#d1fae5', color: '#065f46' },
-      f2f: { bg: '#fef3c7', color: '#92400e' },
-      test: { bg: '#e5e7eb', color: '#374151' }
+    const badges = {
+      certification_alert: 'Certification',
+      weekly_summary: 'Weekly',
+      f2f_alert: 'F2F Alert',
+      huv_report: 'HUV Report',
+      test_email: 'Test'
     };
-    const style = styles[type] || styles.test;
-    return (
-      <span style={{
-        background: style.bg,
-        color: style.color,
-        padding: '2px 8px',
-        borderRadius: '4px',
-        fontSize: '0.75rem',
-        fontWeight: 500
-      }}>
-        {type.charAt(0).toUpperCase() + type.slice(1)}
-      </span>
-    );
-  };
-
-  const formatDate = (date) => {
-    if (!date) return 'N/A';
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit'
-    }).format(date);
+    return badges[type] || 'Email';
   };
 
   if (loading) {
     return (
       <div className="page-loading">
-        <div className="spinner"></div>
+        <div className="spinner" />
         <p>Loading notifications...</p>
-        <style>{`
-          .page-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; }
-          .spinner { width: 40px; height: 40px; border: 3px solid #e5e7eb; border-top-color: #2563eb; border-radius: 50%; animation: spin 1s linear infinite; }
-          @keyframes spin { to { transform: rotate(360deg); } }
-          .page-loading p { color: #6b7280; margin-top: 1rem; }
-        `}</style>
       </div>
     );
   }
 
   return (
     <div className="notifications-page">
+      {/* Page Header */}
       <div className="page-header">
         <h1>🔔 Notifications</h1>
         <p>Manage email alerts and view notification history</p>
       </div>
 
       <div className="notifications-grid">
-        {/* Settings Panel */}
+        {/* Email Recipients Panel */}
+        <div className="panel recipients-panel">
+          <h2>📧 Email Recipients</h2>
+          
+          <div className="recipients-section">
+            {settings.emailList.length === 0 ? (
+              <div className="empty-state">
+                <span>📭</span>
+                <p>No recipients configured</p>
+              </div>
+            ) : (
+              settings.emailList.map(email => (
+                <div key={email} className="email-item">
+                  <span>{email}</span>
+                  <button 
+                    className="remove-btn"
+                    onClick={() => removeEmail(email)}
+                    title="Remove"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="add-email">
+            <input
+              type="email"
+              placeholder="Add email address..."
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addEmail()}
+            />
+            <button onClick={addEmail} disabled={!newEmail}>
+              Add
+            </button>
+          </div>
+
+          <div className="test-section">
+            <button 
+              className="test-btn"
+              onClick={sendTestEmail}
+              disabled={testing || settings.emailList.length === 0}
+            >
+              {testing ? 'Sending...' : '🧪 Send Test Email'}
+            </button>
+            
+            {testResult && (
+              <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
+                {testResult.success ? '✓' : '✗'} {testResult.message}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Alert Settings Panel */}
         <div className="panel settings-panel">
-          <h2>Alert Settings</h2>
+          <h2>⚙️ Alert Settings</h2>
           
           <div className="toggle-group">
             <div className="toggle-item">
@@ -307,10 +339,10 @@ const NotificationsPage = () => {
 
             <div className="toggle-item">
               <div className="toggle-info">
-                <span className="toggle-icon">👨‍⚕️</span>
+                <span className="toggle-icon">👤</span>
                 <div>
                   <strong>F2F Encounter Alerts</strong>
-                  <small>Patients requiring Face-to-Face</small>
+                  <small>Face-to-Face requirements</small>
                 </div>
               </div>
               <label className="switch">
@@ -326,121 +358,61 @@ const NotificationsPage = () => {
 
           <div className="lead-days-setting">
             <label>
-              <strong>Notification Lead Days</strong>
-              <small>Alert when certification is due within this many days</small>
+              <strong>Lead Days for Alerts</strong>
+              <small>Send alerts this many days before due date</small>
             </label>
-            <select 
+            <input
+              type="number"
+              min="1"
+              max="30"
               value={settings.leadDays}
               onChange={(e) => handleLeadDaysChange(e.target.value)}
-            >
-              <option value={7}>7 days</option>
-              <option value={10}>10 days</option>
-              <option value={14}>14 days (recommended)</option>
-              <option value={21}>21 days</option>
-              <option value={30}>30 days</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Recipients Panel */}
-        <div className="panel recipients-panel">
-          <h2>Email Recipients</h2>
-          <p className="panel-desc">Notifications will be sent to these addresses</p>
-          
-          <div className="email-list">
-            {settings.emailList.length === 0 ? (
-              <div className="empty-state">
-                <span>📭</span>
-                <p>No recipients configured</p>
-              </div>
-            ) : (
-              settings.emailList.map(email => (
-                <div key={email} className="email-item">
-                  <span>{email}</span>
-                  <button 
-                    className="remove-btn"
-                    onClick={() => removeEmail(email)}
-                    title="Remove"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-
-          <div className="add-email">
-            <input
-              type="email"
-              placeholder="Add email address..."
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addEmail()}
             />
-            <button onClick={addEmail} disabled={!newEmail}>
-              Add
-            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Schedule Panel */}
+      <div className="panel schedule-panel">
+        <h2>📆 Notification Schedule</h2>
+        
+        <div className="schedule-items">
+          <div className="schedule-item">
+            <div className="schedule-icon">📅</div>
+            <div className="schedule-info">
+              <strong>Daily Alerts</strong>
+              <span>Every day at 9:00 AM ET</span>
+            </div>
+            <div className={`schedule-status ${settings.dailyAlerts ? 'active' : 'inactive'}`}>
+              {settings.dailyAlerts ? 'Active' : 'Disabled'}
+            </div>
           </div>
 
-          <div className="test-section">
-            <button 
-              className="test-btn"
-              onClick={sendTestEmail}
-              disabled={testing || settings.emailList.length === 0}
-            >
-              {testing ? 'Sending...' : '🧪 Send Test Email'}
-            </button>
-            
-            {testResult && (
-              <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
-                {testResult.success ? '✓' : '✗'} {testResult.message}
-              </div>
-            )}
+          <div className="schedule-item">
+            <div className="schedule-icon">📊</div>
+            <div className="schedule-info">
+              <strong>Weekly Summary</strong>
+              <span>Mondays at 8:00 AM ET</span>
+            </div>
+            <div className={`schedule-status ${settings.weeklySummary ? 'active' : 'inactive'}`}>
+              {settings.weeklySummary ? 'Active' : 'Disabled'}
+            </div>
           </div>
         </div>
 
-        {/* Schedule Panel */}
-        <div className="panel schedule-panel">
-          <h2>📆 Notification Schedule</h2>
-          
-          <div className="schedule-items">
-            <div className="schedule-item">
-              <div className="schedule-icon">📅</div>
-              <div className="schedule-info">
-                <strong>Daily Alerts</strong>
-                <span>Every day at 9:00 AM ET</span>
-              </div>
-              <div className={`schedule-status ${settings.dailyAlerts ? 'active' : 'inactive'}`}>
-                {settings.dailyAlerts ? 'Active' : 'Disabled'}
-              </div>
-            </div>
-
-            <div className="schedule-item">
-              <div className="schedule-icon">📊</div>
-              <div className="schedule-info">
-                <strong>Weekly Summary</strong>
-                <span>Mondays at 8:00 AM ET</span>
-              </div>
-              <div className={`schedule-status ${settings.weeklySummary ? 'active' : 'inactive'}`}>
-                {settings.weeklySummary ? 'Active' : 'Disabled'}
-              </div>
-            </div>
+        <div className="functions-status">
+          <h3>Cloud Functions Status</h3>
+          <div className="function-item">
+            <span className="status-dot active"></span>
+            <span>dailyCertificationCheck</span>
           </div>
-
-          <div className="functions-status">
-            <h3>Cloud Functions Status</h3>
-            <div className="function-item">
-              <span className="status-dot active"></span>
-              <span>dailyCertificationCheck</span>
-            </div>
-            <div className="function-item">
-              <span className="status-dot active"></span>
-              <span>weeklySummary</span>
-            </div>
-            <div className="function-item">
-              <span className="status-dot active"></span>
-              <span>testEmail</span>
-            </div>
+          <div className="function-item">
+            <span className="status-dot active"></span>
+            <span>weeklySummary</span>
+          </div>
+          <div className="function-item">
+            <span className="status-dot active"></span>
+            <span>testEmail</span>
           </div>
         </div>
       </div>
@@ -473,7 +445,7 @@ const NotificationsPage = () => {
                     <td>
                       <span className="type-cell">
                         {getTypeIcon(item.type)}
-                        {getTypeBadge(item.type)}
+                        <span className="type-badge">{getTypeBadge(item.type)}</span>
                       </span>
                     </td>
                     <td className="subject-cell">{item.subject}</td>
@@ -484,7 +456,8 @@ const NotificationsPage = () => {
                     <td>
                       <span className={`status-badge status-${item.status}`}>
                         {item.status === 'sent' ? '✓ Sent' : 
-                         item.status === 'failed' ? '✗ Failed' : item.status}
+                         item.status === 'failed' ? '✗ Failed' : 
+                         '⏳ Pending'}
                       </span>
                     </td>
                   </tr>
@@ -497,32 +470,38 @@ const NotificationsPage = () => {
 
       <style>{`
         .notifications-page {
-          padding: 1.5rem;
+          padding: 2rem;
           max-width: 1400px;
           margin: 0 auto;
         }
 
         .page-header {
-          margin-bottom: 1.5rem;
+          margin-bottom: 2rem;
         }
 
         .page-header h1 {
-          margin: 0;
-          font-size: 1.5rem;
+          margin: 0 0 0.5rem 0;
+          font-size: 2rem;
           color: #1f2937;
         }
 
         .page-header p {
-          margin: 0.25rem 0 0;
+          margin: 0;
           color: #6b7280;
-          font-size: 0.875rem;
+          font-size: 0.9375rem;
         }
 
         .notifications-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+          grid-template-columns: repeat(2, 1fr);
           gap: 1.5rem;
           margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 1024px) {
+          .notifications-grid {
+            grid-template-columns: 1fr;
+          }
         }
 
         .panel {
@@ -533,199 +512,78 @@ const NotificationsPage = () => {
         }
 
         .panel h2 {
-          margin: 0 0 1rem;
-          font-size: 1rem;
+          margin: 0 0 1.5rem 0;
+          font-size: 1.125rem;
           color: #1f2937;
         }
 
-        .panel-desc {
-          margin: -0.5rem 0 1rem;
-          font-size: 0.875rem;
-          color: #6b7280;
-        }
-
-        /* Toggle Switches */
-        .toggle-group {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-
-        .toggle-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 0.75rem;
-          background: #f9fafb;
-          border-radius: 8px;
-        }
-
-        .toggle-info {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-        }
-
-        .toggle-icon {
-          font-size: 1.25rem;
-        }
-
-        .toggle-info strong {
-          display: block;
-          font-size: 0.875rem;
-        }
-
-        .toggle-info small {
-          color: #6b7280;
-          font-size: 0.75rem;
-        }
-
-        .switch {
-          position: relative;
-          width: 48px;
-          height: 24px;
-        }
-
-        .switch input {
-          opacity: 0;
-          width: 0;
-          height: 0;
-        }
-
-        .slider {
-          position: absolute;
-          cursor: pointer;
-          inset: 0;
-          background: #d1d5db;
-          border-radius: 24px;
-          transition: 0.3s;
-        }
-
-        .slider:before {
-          content: "";
-          position: absolute;
-          height: 18px;
-          width: 18px;
-          left: 3px;
-          bottom: 3px;
-          background: white;
-          border-radius: 50%;
-          transition: 0.3s;
-        }
-
-        input:checked + .slider {
-          background: #2563eb;
-        }
-
-        input:checked + .slider:before {
-          transform: translateX(24px);
-        }
-
-        .lead-days-setting {
-          margin-top: 1.5rem;
-          padding-top: 1rem;
-          border-top: 1px solid #e5e7eb;
-        }
-
-        .lead-days-setting label {
-          display: block;
-          margin-bottom: 0.5rem;
-        }
-
-        .lead-days-setting strong {
-          display: block;
-          font-size: 0.875rem;
-        }
-
-        .lead-days-setting small {
-          color: #6b7280;
-          font-size: 0.75rem;
-        }
-
-        .lead-days-setting select {
-          width: 100%;
-          padding: 0.5rem;
-          border: 1px solid #d1d5db;
-          border-radius: 6px;
-          font-size: 0.875rem;
-        }
-
-        /* Email Recipients */
-        .email-list {
+        /* Recipients Panel */
+        .recipients-section {
           display: flex;
           flex-direction: column;
           gap: 0.5rem;
           margin-bottom: 1rem;
-          max-height: 200px;
-          overflow-y: auto;
         }
 
         .email-item {
           display: flex;
-          justify-content: space-between;
           align-items: center;
-          padding: 0.5rem 0.75rem;
-          background: #f3f4f6;
+          justify-content: space-between;
+          padding: 0.75rem 1rem;
+          background: #f9fafb;
+          border: 1px solid #e5e7eb;
           border-radius: 6px;
-          font-size: 0.875rem;
         }
 
         .remove-btn {
           background: none;
           border: none;
-          color: #9ca3af;
-          font-size: 1.25rem;
+          color: #ef4444;
+          font-size: 1.5rem;
           cursor: pointer;
-          padding: 0 0.25rem;
-          line-height: 1;
+          padding: 0;
+          width: 24px;
+          height: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
         .remove-btn:hover {
-          color: #ef4444;
-        }
-
-        .empty-state {
-          text-align: center;
-          padding: 2rem;
-          color: #9ca3af;
-        }
-
-        .empty-state span {
-          font-size: 2rem;
-          display: block;
-          margin-bottom: 0.5rem;
+          color: #dc2626;
         }
 
         .add-email {
           display: flex;
           gap: 0.5rem;
+          margin-bottom: 1rem;
         }
 
         .add-email input {
           flex: 1;
-          padding: 0.5rem 0.75rem;
-          border: 1px solid #d1d5db;
+          padding: 0.625rem 0.875rem;
+          border: 1px solid #e5e7eb;
           border-radius: 6px;
           font-size: 0.875rem;
         }
 
         .add-email button {
-          padding: 0.5rem 1rem;
+          padding: 0.625rem 1.25rem;
           background: #2563eb;
           color: white;
           border: none;
           border-radius: 6px;
+          font-weight: 500;
           cursor: pointer;
-          font-size: 0.875rem;
         }
 
         .add-email button:disabled {
-          background: #93c5fd;
+          background: #94a3b8;
           cursor: not-allowed;
         }
 
         .test-section {
-          margin-top: 1.5rem;
+          margin-top: 1rem;
           padding-top: 1rem;
           border-top: 1px solid #e5e7eb;
         }
@@ -733,20 +591,20 @@ const NotificationsPage = () => {
         .test-btn {
           width: 100%;
           padding: 0.75rem;
-          background: #f3f4f6;
-          border: 1px solid #d1d5db;
+          background: #8b5cf6;
+          color: white;
+          border: none;
           border-radius: 6px;
-          cursor: pointer;
-          font-size: 0.875rem;
           font-weight: 500;
+          cursor: pointer;
         }
 
         .test-btn:hover:not(:disabled) {
-          background: #e5e7eb;
+          background: #7c3aed;
         }
 
         .test-btn:disabled {
-          opacity: 0.6;
+          background: #94a3b8;
           cursor: not-allowed;
         }
 
@@ -767,11 +625,130 @@ const NotificationsPage = () => {
           color: #991b1b;
         }
 
+        /* Toggle Settings */
+        .toggle-group {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .toggle-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 1rem;
+          background: #f9fafb;
+          border-radius: 6px;
+        }
+
+        .toggle-info {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .toggle-icon {
+          font-size: 1.5rem;
+        }
+
+        .toggle-info strong {
+          display: block;
+          font-size: 0.875rem;
+          color: #1f2937;
+        }
+
+        .toggle-info small {
+          display: block;
+          font-size: 0.75rem;
+          color: #6b7280;
+        }
+
+        /* Toggle Switch */
+        .switch {
+          position: relative;
+          display: inline-block;
+          width: 48px;
+          height: 24px;
+        }
+
+        .switch input {
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+
+        .slider {
+          position: absolute;
+          cursor: pointer;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: #cbd5e1;
+          transition: 0.3s;
+          border-radius: 24px;
+        }
+
+        .slider:before {
+          position: absolute;
+          content: "";
+          height: 18px;
+          width: 18px;
+          left: 3px;
+          bottom: 3px;
+          background-color: white;
+          transition: 0.3s;
+          border-radius: 50%;
+        }
+
+        input:checked + .slider {
+          background-color: #2563eb;
+        }
+
+        input:checked + .slider:before {
+          transform: translateX(24px);
+        }
+
+        /* Lead Days Setting */
+        .lead-days-setting {
+          padding: 1rem;
+          background: #f9fafb;
+          border-radius: 6px;
+        }
+
+        .lead-days-setting label {
+          display: block;
+          margin-bottom: 0.5rem;
+        }
+
+        .lead-days-setting strong {
+          display: block;
+          font-size: 0.875rem;
+          color: #1f2937;
+        }
+
+        .lead-days-setting small {
+          display: block;
+          font-size: 0.75rem;
+          color: #6b7280;
+        }
+
+        .lead-days-setting input {
+          width: 100%;
+          padding: 0.625rem;
+          border: 1px solid #e5e7eb;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          margin-top: 0.5rem;
+        }
+
         /* Schedule Panel */
         .schedule-items {
           display: flex;
           flex-direction: column;
           gap: 0.75rem;
+          margin-bottom: 1.5rem;
         }
 
         .schedule-item {
@@ -780,7 +757,7 @@ const NotificationsPage = () => {
           gap: 0.75rem;
           padding: 0.75rem;
           background: #f9fafb;
-          border-radius: 8px;
+          border-radius: 6px;
         }
 
         .schedule-icon {
@@ -818,6 +795,7 @@ const NotificationsPage = () => {
           color: #6b7280;
         }
 
+        /* Functions Status */
         .functions-status {
           margin-top: 1.5rem;
           padding-top: 1rem;
@@ -851,22 +829,14 @@ const NotificationsPage = () => {
           background: #10b981;
         }
 
-        .status-dot.inactive {
-          background: #d1d5db;
-        }
-
         /* History Table */
-        .history-panel {
-          margin-top: 0;
-        }
-
-        .empty-history {
+        .empty-state, .empty-history {
           text-align: center;
-          padding: 3rem;
-          color: #9ca3af;
+          padding: 3rem 1rem;
+          color: #6b7280;
         }
 
-        .empty-history span {
+        .empty-state span, .empty-history span {
           font-size: 3rem;
           display: block;
           margin-bottom: 1rem;
@@ -875,6 +845,7 @@ const NotificationsPage = () => {
         .empty-history small {
           display: block;
           margin-top: 0.5rem;
+          font-size: 0.8rem;
         }
 
         .history-table-container {
@@ -886,22 +857,20 @@ const NotificationsPage = () => {
           border-collapse: collapse;
         }
 
-        .history-table th,
-        .history-table td {
-          padding: 0.75rem;
-          text-align: left;
-          border-bottom: 1px solid #e5e7eb;
-        }
-
         .history-table th {
+          text-align: left;
+          padding: 0.75rem;
           background: #f9fafb;
           font-size: 0.75rem;
           font-weight: 600;
           color: #6b7280;
           text-transform: uppercase;
+          letter-spacing: 0.05em;
         }
 
         .history-table td {
+          padding: 0.75rem;
+          border-bottom: 1px solid #e5e7eb;
           font-size: 0.875rem;
         }
 
@@ -911,43 +880,33 @@ const NotificationsPage = () => {
           gap: 0.5rem;
         }
 
-        .subject-cell {
-          max-width: 300px;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        .recipients-cell {
-          color: #6b7280;
-        }
-
-        .date-cell {
-          white-space: nowrap;
-          color: #6b7280;
+        .type-badge {
+          padding: 0.25rem 0.5rem;
+          background: #f3f4f6;
+          border-radius: 4px;
+          font-size: 0.7rem;
         }
 
         .status-badge {
           padding: 0.25rem 0.5rem;
           border-radius: 4px;
-          font-size: 0.75rem;
+          font-size: 0.7rem;
           font-weight: 500;
         }
 
-        .status-sent {
+        .status-badge.status-sent {
           background: #d1fae5;
           color: #065f46;
         }
 
-        .status-failed {
+        .status-badge.status-failed {
           background: #fee2e2;
           color: #991b1b;
         }
 
-        @media (max-width: 768px) {
-          .notifications-grid {
-            grid-template-columns: 1fr;
-          }
+        .status-badge.status-pending {
+          background: #fef3c7;
+          color: #92400e;
         }
       `}</style>
     </div>
