@@ -28,6 +28,6 @@
     ]
   },
   "storage": {
-    "rules": "home/storage.rules"
+    "rules": "storage.rules"
   }
 }

@@ -1,4 +1,5 @@
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
     // Allow authenticated users to read/write their organization's documents
@@ -9,7 +10,7 @@ service firebase.storage {
                    && request.auth.token.orgId == orgId;
     }
     
-    // Deny all other access
+    // Deny all other access by default
     match /{allPaths=**} {
       allow read, write: if false;
     }
