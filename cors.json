@@ -1,7 +1,22 @@
 [
-    {
-      "origin": ["*"],
-      "method": ["GET"],
-      "maxAgeSeconds": 3600
-    }
-  ]
+  {
+    "AllowedOrigins": [
+      "*",
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "https://us-central1-parrish-harmonyhca.cloudfunctions.net/"
+    ],
+    "AllowedMethods": [
+      "GET",
+      "PUT",
+      "POST",
+      "DELETE"
+    ],
+    "AllowedHeaders": [
+      "*",
+      "Access-Control-Allow-Origin"
+    ],
+    "ExposeHeaders": [],
+    "MaxAgeSeconds": 3000
+  }
+]

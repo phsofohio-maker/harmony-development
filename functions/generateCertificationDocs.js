@@ -24,7 +24,13 @@ const storage = getStorage();
  * 
  * @returns {Object} Generated document info with download URL
  */
+
 exports.generateCertificationDocs = onCall(async (request) => {
+  
+  console.log('=== generateCertificationDocs called ===');
+  console.log('Request data:', JSON.stringify(request.data, null, 2));
+  console.log('Auth:', request.auth?.uid, request.auth?.token?.orgId);
+
   const { patientId, documentType, customData = {} } = request.data;
   const userId = request.auth?.uid;
   const orgId = request.auth?.token?.orgId;
@@ -40,14 +46,20 @@ exports.generateCertificationDocs = onCall(async (request) => {
 
   try {
     // 1. Fetch patient data
-    const patientDoc = await db.collection('patients').doc(patientId).get();
+    // ✅ CORRECT - looking inside organization
+    const patientDoc = await db.collection('organizations')
+      .doc(orgId)
+      .collection('patients')
+      .doc(patientId)
+      .get();
+      
     if (!patientDoc.exists) {
       throw new Error('Patient not found');
     }
     const patient = patientDoc.data();
 
     // Verify patient belongs to user's organization
-    if (patient.organizationId !== orgId) {
+    if (patient.organizationId && patient.organizationId !== orgId) {
       throw new Error('Unauthorized access to patient');
     }
 

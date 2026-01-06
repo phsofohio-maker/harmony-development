@@ -115,88 +115,111 @@ const DocumentsPage = () => {
     return cti.requiredDocuments || [];
   };
 
-  // Generate all documents for a patient
-  const handleGenerateAll = async () => {
-    if (!selectedPatient) {
-      alert('Please select a patient first.');
-      return;
+// Generate all documents for a patient
+const handleGenerateAll = async () => {
+  if (!selectedPatient) {
+    alert('Please select a patient first.');
+    return;
+  }
+
+  setGenerating(true);
+  setGenerationStatus({ type: 'info', message: 'Generating documents...' });
+  
+  try {
+    const requiredDocs = getRequiredDocs();
+    
+    if (requiredDocs.length === 0) {
+      throw new Error('No required documents found for this patient');
     }
 
-    setGenerating(true);
-    setGenerationStatus({ type: 'info', message: 'Generating documents...' });
-    
-    try {
-      // Call Cloud Function to generate document set
-      const generateDocumentSet = httpsCallable(functions, 'generateCertificationDocs');
-      const result = await generateDocumentSet({
-        patientId: selectedPatient.id,
-        orgId
-      });
-      
-      if (result.data.success) {
-        setGenerationStatus({
-          type: 'success',
-          message: `✓ Generated ${result.data.documentsGenerated} of ${result.data.totalDocuments} documents for ${result.data.patientName}`,
-          results: result.data.results
+    // Generate each document sequentially
+    const results = [];
+    for (const docType of requiredDocs) {
+      try {
+        const generateDocument = httpsCallable(functions, 'generateCertificationDocs');
+        const result = await generateDocument({
+          patientId: selectedPatient.id,
+          documentType: docType,  // ✅ FIXED: Added documentType
+          customData: {}
         });
         
-        // Reload recent documents
-        await loadData();
-      } else {
-        throw new Error('Document generation failed');
-      }
-      
-    } catch (error) {
-      console.error('Document generation error:', error);
-      setGenerationStatus({
-        type: 'error',
-        message: `✗ Failed to generate documents: ${error.message}`
-      });
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  // Generate a single template
-  const handleGenerateSingle = async (template) => {
-    if (!selectedPatient) {
-      alert('Please select a patient first using the Quick Generate section above.');
-      return;
-    }
-
-    setGenerating(true);
-    setGenerationStatus({ type: 'info', message: `Generating ${template.name}...` });
-    
-    try {
-      const generateDocument = httpsCallable(functions, 'generateCertificationDocs');
-            const result = await generateDocument({
-        patientId: selectedPatient.id,
-        templateType: template.id,
-        orgId
-      });
-      
-      if (result.data.success) {
-        setGenerationStatus({
-          type: 'success',
-          message: `✓ ${template.name} generated successfully!`,
-          documentLink: result.data.documentLink,
-          pdfLink: result.data.pdfLink
+        results.push({ 
+          docType, 
+          success: true, 
+          data: result.data,
+          documentLink: result.data.downloadUrl
         });
-        
-        await loadData();
+      } catch (error) {
+        console.error(`Error generating ${docType}:`, error);
+        results.push({ 
+          docType, 
+          success: false, 
+          error: error.message 
+        });
       }
-      
-    } catch (error) {
-      console.error('Document generation error:', error);
-      setGenerationStatus({
-        type: 'error',
-        message: `✗ Failed to generate ${template.name}: ${error.message}`
-      });
-    } finally {
-      setGenerating(false);
     }
-  };
+    
+    const successCount = results.filter(r => r.success).length;
+    
+    setGenerationStatus({
+      type: successCount > 0 ? 'success' : 'error',
+      message: `✓ Generated ${successCount} of ${requiredDocs.length} documents for ${selectedPatient.name}`,
+      results
+    });
+    
+    // Reload recent documents
+    await loadData();
+    
+  } catch (error) {
+    console.error('Document generation error:', error);
+    setGenerationStatus({
+      type: 'error',
+      message: `✗ Failed to generate documents: ${error.message}`
+    });
+  } finally {
+    setGenerating(false);
+  }
+};
 
+// Generate a single template
+const handleGenerateSingle = async (template) => {
+  if (!selectedPatient) {
+    alert('Please select a patient first using the Quick Generate section above.');
+    return;
+  }
+
+  setGenerating(true);
+  setGenerationStatus({ type: 'info', message: `Generating ${template.name}...` });
+  
+  try {
+    const generateDocument = httpsCallable(functions, 'generateCertificationDocs');
+    const result = await generateDocument({
+      patientId: selectedPatient.id,
+      documentType: template.id,  // ✅ FIXED: Changed from "templateType" to "documentType"
+      customData: {}
+    });
+    
+    if (result.data.success) {
+      setGenerationStatus({
+        type: 'success',
+        message: `✓ ${template.name} generated successfully!`,
+        documentLink: result.data.downloadUrl,  // Updated to match Cloud Function response
+        pdfLink: result.data.downloadUrl
+      });
+      
+      await loadData();
+    }
+    
+  } catch (error) {
+    console.error('Document generation error:', error);
+    setGenerationStatus({
+      type: 'error',
+      message: `✗ Failed to generate ${template.name}: ${error.message}`
+    });
+  } finally {
+    setGenerating(false);
+  }
+};
   // Open document in new tab
   const openDocument = (link) => {
     window.open(link, '_blank');
