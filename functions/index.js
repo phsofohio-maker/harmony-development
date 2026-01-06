@@ -8,6 +8,8 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { getFirestore, Timestamp } = require('firebase-admin/firestore');
 const { initializeApp, getApp } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
+const { getStorage } = require('firebase-admin/storage');
+const { google } = require('googleapis');
 const nodemailer = require('nodemailer');
 const { defineSecret } = require('firebase-functions/params');
 const { generateCertificationDocs } = require('./generateCertificationDocs');
@@ -20,6 +22,7 @@ try {
 
 const db = getFirestore();
 const admin = getAuth();
+const storage = getStorage();
 
 // Secrets for email
 const emailUser = defineSecret('EMAIL_USER');
@@ -698,180 +701,5 @@ exports.testEmail = onCall({
     throw new HttpsError('internal', error.message || 'Failed to send test email');
   }
 });
-
-async function getServiceAccountAuth() {
-  const auth = new google.auth.GoogleAuth({
-    scopes: [
-      'https://www.googleapis.com/auth/documents',
-      'https://www.googleapis.com/auth/drive',
-      'https://www.googleapis.com/auth/drive.file'
-    ]
-  });
-  return auth;
-}
-
-/**
- * Prepare merge data based on patient info and document type
- */
-function prepareMergeData(patient, documentType, customData) {
-  const cti = patient.compliance?.cti || {};
-  
-  // Base merge fields common to all documents
-  const baseData = {
-    patientName: patient.name || '',
-    dateOfBirth: formatDate(patient.dateOfBirth) || '',
-    mrn: patient.medicalRecordNumber || '',
-    socDate: formatDate(patient.startOfCareDate) || '',
-    admissionDate: formatDate(patient.admissionDate) || '',
-    benefitPeriod: cti.periodShortName || '',
-    primaryDiagnosis: patient.diagnosis || '',
-    certStart: formatDate(cti.certStart) || '',
-    certEnd: formatDate(cti.certEnd) || '',
-    certificationDate: formatDate(new Date()),
-    ...customData
-  };
-
-  // Document-specific fields
-  switch (documentType) {
-    case '60DAY':
-      return {
-        ...baseData,
-        f2fCompleted: cti.f2fCompleted ? 'Yes' : 'No',
-        f2fDate: formatDate(cti.f2fDate) || 'Pending',
-        f2fProvider: customData.f2fProvider || 'TBD'
-      };
-
-    case '90DAY_INITIAL':
-    case '90DAY_SECOND':
-      return {
-        ...baseData,
-        priorPeriodDates: cti.priorPeriodDates || 'N/A',
-        icd10Code: patient.icd10Code || ''
-      };
-
-    case 'ATTEND_CERT':
-      return {
-        ...baseData,
-        attendingPhysicianName: patient.attendingPhysician || '',
-        treatmentDuration: calculateTreatmentDuration(patient.admissionDate)
-      };
-
-    case 'PROGRESS_NOTE':
-      return {
-        ...baseData,
-        visitDate: formatDate(new Date()),
-        providerName: customData.providerName || ''
-      };
-
-    case 'PATIENT_HISTORY':
-      return {
-        ...baseData,
-        age: calculateAge(patient.dateOfBirth),
-        gender: patient.gender || '',
-        referralSource: patient.referralSource || ''
-      };
-
-    case 'F2F_ENCOUNTER':
-      return {
-        ...baseData,
-        encounterDate: formatDate(cti.f2fDate) || formatDate(new Date()),
-        encounterProvider: customData.encounterProvider || '',
-        providerType: customData.providerType || 'Nurse Practitioner',
-        recertPeriodDates: `${formatDate(cti.certStart)} - ${formatDate(cti.certEnd)}`
-      };
-
-    default:
-      return baseData;
-  }
-}
-
-/**
- * Create replace requests for Google Docs API
- */
-function createReplaceRequests(document, mergeData) {
-  const requests = [];
-
-  // Find all merge fields in document
-  const content = document.body.content;
-  const textRuns = extractTextRuns(content);
-
-  // Create replacement requests for each merge field
-  Object.entries(mergeData).forEach(([key, value]) => {
-    const placeholder = `{{${key}}}`;
-    
-    textRuns.forEach(textRun => {
-      if (textRun.text.includes(placeholder)) {
-        requests.push({
-          replaceAllText: {
-            containsText: {
-              text: placeholder,
-              matchCase: true
-            },
-            replaceText: String(value || '')
-          }
-        });
-      }
-    });
-  });
-
-  return requests;
-}
-
-/**
- * Extract text runs from document content
- */
-function extractTextRuns(content, runs = []) {
-  if (!content) return runs;
-
-  content.forEach(element => {
-    if (element.paragraph?.elements) {
-      element.paragraph.elements.forEach(el => {
-        if (el.textRun?.content) {
-          runs.push({ text: el.textRun.content });
-        }
-      });
-    }
-    if (element.table?.tableRows) {
-      element.table.tableRows.forEach(row => {
-        row.tableCells?.forEach(cell => {
-          extractTextRuns(cell.content, runs);
-        });
-      });
-    }
-  });
-
-  return runs;
-}
-
-/**
- * Format date helpers
- */
-function formatDate(date) {
-  if (!date) return '';
-  if (date.toDate) date = date.toDate(); // Firestore Timestamp
-  if (!(date instanceof Date)) date = new Date(date);
-  if (isNaN(date)) return '';
-  
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
-}
-
-function calculateAge(dateOfBirth) {
-  if (!dateOfBirth) return '';
-  const dob = dateOfBirth.toDate ? dateOfBirth.toDate() : new Date(dateOfBirth);
-  const ageDiff = Date.now() - dob.getTime();
-  const ageDate = new Date(ageDiff);
-  return Math.abs(ageDate.getUTCFullYear() - 1970);
-}
-
-function calculateTreatmentDuration(admissionDate) {
-  if (!admissionDate) return 'unknown duration';
-  const admission = admissionDate.toDate ? admissionDate.toDate() : new Date(admissionDate);
-  const months = Math.floor((Date.now() - admission.getTime()) / (30 * 24 * 60 * 60 * 1000));
-  return months > 0 ? `${months} months` : 'less than 1 month';
-}
 
 exports.generateCertificationDocs = generateCertificationDocs;

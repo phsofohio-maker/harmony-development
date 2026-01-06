@@ -1,350 +1,288 @@
-const { onCall } = require('firebase-functions/v2/https');
-const { initializeApp } = require('firebase-admin/app');
-const { getFirestore, Timestamp } = require('firebase-admin/firestore');
-const { getStorage } = require('firebase-admin/storage');
-const { google } = require('googleapis');
+/**
+ * functions/addDummyPatients.js
+ * 
+ * Cloud Function to add dummy patients for testing
+ * 
+ * DEPLOYMENT:
+ * Add this to your functions/index.js or create as separate file
+ * 
+ * USAGE:
+ * firebase functions:call addDummyPatients --data='{"orgId":"org_parrish"}'
+ * 
+ * Or from your app:
+ * const addDummyPatients = httpsCallable(functions, 'addDummyPatients');
+ * await addDummyPatients({ orgId: 'org_parrish' });
+ */
 
-// Initialize if not already done
-try {
-  initializeApp();
-} catch (e) {
-  // Already initialized
-}
+const { onCall } = require('firebase-functions/v2/https');
+const { getFirestore, Timestamp } = require('firebase-admin/firestore');
 
 const db = getFirestore();
-const storage = getStorage();
 
-/**
- * Generate certification documents
- * 
- * @param {Object} data
- * @param {string} data.patientId - Patient document ID
- * @param {string} data.documentType - Template type (60DAY, 90DAY_INITIAL, etc.)
- * @param {Object} data.customData - Optional additional data to merge
- * 
- * @returns {Object} Generated document info with download URL
- */
-
-exports.generateCertificationDocs = onCall(async (request) => {
+exports.addDummyPatients = onCall(async (request) => {
+  const { orgId } = request.data;
+  const userId = request.auth?.uid || 'SYSTEM_DUMMY_DATA';
   
-  console.log('=== generateCertificationDocs called ===');
-  console.log('Request data:', JSON.stringify(request.data, null, 2));
-  console.log('Auth:', request.auth?.uid, request.auth?.token?.orgId);
-
-  const { patientId, documentType, customData = {} } = request.data;
-  const userId = request.auth?.uid;
-  const orgId = request.auth?.token?.orgId;
-
-  // Validate input
-  if (!patientId || !documentType) {
-    throw new Error('Missing required parameters: patientId and documentType');
-  }
-
+  // Validate organization access
   if (!orgId) {
-    throw new Error('User does not have organization access');
+    throw new Error('Organization ID required');
   }
 
-  try {
-    // 1. Fetch patient data
-    // ✅ CORRECT - looking inside organization
-    const patientDoc = await db.collection('organizations')
-      .doc(orgId)
-      .collection('patients')
-      .doc(patientId)
-      .get();
-      
-    if (!patientDoc.exists) {
-      throw new Error('Patient not found');
-    }
-    const patient = patientDoc.data();
-
-    // Verify patient belongs to user's organization
-    if (patient.organizationId && patient.organizationId !== orgId) {
-      throw new Error('Unauthorized access to patient');
-    }
-
-    // 2. Get template ID from organization settings
-    const orgDoc = await db.collection('organizations').doc(orgId).get();
-    const templates = orgDoc.data()?.settings?.documentTemplates || {};
-    const templateId = templates[documentType];
-
-    if (!templateId) {
-      throw new Error(`Template not configured for ${documentType}`);
-    }
-
-    // 3. Prepare merge data
-    const mergeData = prepareMergeData(patient, documentType, customData);
-
-    // 4. Generate document
-    const auth = await getServiceAccountAuth();
-    const docs = google.docs({ version: 'v1', auth });
-    const drive = google.drive({ version: 'v3', auth });
-
-    // Copy template
-    const copyResponse = await drive.files.copy({
-      fileId: templateId,
-      requestBody: {
-        name: `${documentType}_${patient.name}_${new Date().toISOString().split('T')[0]}`
-      }
-    });
-    const newDocId = copyResponse.data.id;
-
-    // Get document content
-    const docResponse = await docs.documents.get({ documentId: newDocId });
-
-    // Prepare batch update requests
-    const requests = createReplaceRequests(docResponse.data, mergeData);
-
-    // Apply replacements
-    if (requests.length > 0) {
-      await docs.documents.batchUpdate({
-        documentId: newDocId,
-        requestBody: { requests }
-      });
-    }
-
-    // 5. Export as PDF
-    const pdfResponse = await drive.files.export({
-      fileId: newDocId,
-      mimeType: 'application/pdf'
-    }, {
-      responseType: 'stream'
-    });
-
-    // 6. Upload to Cloud Storage
-    const fileName = `documents/${orgId}/${patientId}/${documentType}_${Date.now()}.pdf`;
-    const bucket = storage.bucket();
-    const file = bucket.file(fileName);
-
-    await new Promise((resolve, reject) => {
-      pdfResponse.data
-        .pipe(file.createWriteStream({
-          metadata: {
-            contentType: 'application/pdf',
-            metadata: {
-              patientId,
-              documentType,
-              generatedBy: userId,
-              generatedAt: new Date().toISOString()
-            }
-          }
-        }))
-        .on('error', reject)
-        .on('finish', resolve);
-    });
-
-    // Get signed URL (valid for 7 days)
-    const [url] = await file.getSignedUrl({
-      action: 'read',
-      expires: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 days
-    });
-
-    // 7. Log in Firestore history
-    const historyRef = await db.collection('organizations')
-      .doc(orgId)
-      .collection('documentHistory')
-      .add({
-        patientId,
-        patientName: patient.name,
-        documentType,
-        fileName,
-        downloadUrl: url,
-        generatedBy: userId,
-        generatedAt: Timestamp.now(),
-        expiresAt: Timestamp.fromMillis(Date.now() + 7 * 24 * 60 * 60 * 1000)
-      });
-
-    // Clean up temporary Google Doc (optional)
-    // await drive.files.delete({ fileId: newDocId });
-
-    return {
-      success: true,
-      documentId: historyRef.id,
-      fileName,
-      downloadUrl: url,
-      message: `${documentType} generated successfully`
-    };
-
-  } catch (error) {
-    console.error('Error generating document:', error);
-    throw new Error(`Failed to generate document: ${error.message}`);
+  // Only allow admins/owners to add dummy data
+  const role = request.auth?.token?.role;
+  if (role !== 'owner' && role !== 'admin') {
+    throw new Error('Insufficient permissions. Owner or Admin role required.');
   }
-});
 
-/**
- * Get service account authentication for Google APIs
- */
-async function getServiceAccountAuth() {
-  const auth = new google.auth.GoogleAuth({
-    scopes: [
-      'https://www.googleapis.com/auth/documents',
-      'https://www.googleapis.com/auth/drive',
-      'https://www.googleapis.com/auth/drive.file'
-    ]
-  });
-  return auth;
-}
-
-/**
- * Prepare merge data based on patient info and document type
- */
-function prepareMergeData(patient, documentType, customData) {
-  const cti = patient.compliance?.cti || {};
-  
-  // Base merge fields common to all documents
-  const baseData = {
-    patientName: patient.name || '',
-    dateOfBirth: formatDate(patient.dateOfBirth) || '',
-    mrn: patient.medicalRecordNumber || '',
-    socDate: formatDate(patient.startOfCareDate) || '',
-    admissionDate: formatDate(patient.admissionDate) || '',
-    benefitPeriod: cti.periodShortName || '',
-    primaryDiagnosis: patient.diagnosis || '',
-    certStart: formatDate(cti.certStart) || '',
-    certEnd: formatDate(cti.certEnd) || '',
-    certificationDate: formatDate(new Date()),
-    ...customData
+  // Helper to create dates
+  const daysAgo = (days) => {
+    const date = new Date();
+    date.setDate(date.getDate() - days);
+    return Timestamp.fromDate(date);
   };
 
-  // Document-specific fields
-  switch (documentType) {
-    case '60DAY':
-      return {
-        ...baseData,
-        f2fCompleted: cti.f2fCompleted ? 'Yes' : 'No',
-        f2fDate: formatDate(cti.f2fDate) || 'Pending',
-        f2fProvider: customData.f2fProvider || 'TBD'
+  const dummyPatients = [
+    // CRITICAL - Period 1, Cert ending in 3 days
+    {
+      name: 'Smith, John A.',
+      mrNumber: 'MR001234',
+      dateOfBirth: daysAgo(24820),
+      admissionDate: daysAgo(87),
+      startOfCare: daysAgo(87),
+      startingBenefitPeriod: 1,
+      isReadmission: false,
+      priorHospiceDays: 0,
+      f2fRequired: false,
+      f2fCompleted: false,
+      huv1Completed: true,
+      huv1Date: daysAgo(72),
+      huv2Completed: false,
+      attendingPhysician: 'Dr. Anderson, Michael',
+      status: 'active'
+    },
+
+    // CRITICAL - Period 3 (60-day), F2F overdue
+    {
+      name: 'Johnson, Mary B.',
+      mrNumber: 'MR005678',
+      dateOfBirth: daysAgo(28470),
+      admissionDate: daysAgo(245),
+      startOfCare: daysAgo(245),
+      startingBenefitPeriod: 3,
+      isReadmission: false,
+      priorHospiceDays: 180,
+      f2fRequired: true,
+      f2fCompleted: false,
+      huv1Completed: true,
+      huv1Date: daysAgo(230),
+      huv2Completed: true,
+      huv2Date: daysAgo(215),
+      attendingPhysician: 'Dr. Chen, Susan',
+      status: 'active'
+    },
+
+    // HIGH - Period 2, Cert in 10 days, HUV overdue
+    {
+      name: 'Williams, Robert C.',
+      mrNumber: 'MR009012',
+      dateOfBirth: daysAgo(26280),
+      admissionDate: daysAgo(170),
+      startOfCare: daysAgo(170),
+      startingBenefitPeriod: 2,
+      isReadmission: false,
+      priorHospiceDays: 90,
+      f2fRequired: false,
+      f2fCompleted: false,
+      huv1Completed: true,
+      huv1Date: daysAgo(155),
+      huv2Completed: false,
+      attendingPhysician: 'Dr. Patel, Rajesh',
+      status: 'active'
+    },
+
+    // HIGH - Readmission, F2F pending
+    {
+      name: 'Brown, Patricia D.',
+      mrNumber: 'MR003456',
+      dateOfBirth: daysAgo(30660),
+      admissionDate: daysAgo(15),
+      startOfCare: daysAgo(15),
+      startingBenefitPeriod: 2,
+      isReadmission: true,
+      priorHospiceDays: 45,
+      f2fRequired: true,
+      f2fCompleted: false,
+      huv1Completed: false,
+      huv2Completed: false,
+      attendingPhysician: 'Dr. Martinez, Carlos',
+      status: 'active'
+    },
+
+    // MEDIUM - Period 1, mid-cycle
+    {
+      name: 'Davis, Michael E.',
+      mrNumber: 'MR007890',
+      dateOfBirth: daysAgo(23360),
+      admissionDate: daysAgo(45),
+      startOfCare: daysAgo(45),
+      startingBenefitPeriod: 1,
+      isReadmission: false,
+      priorHospiceDays: 0,
+      f2fRequired: false,
+      f2fCompleted: false,
+      huv1Completed: true,
+      huv1Date: daysAgo(31),
+      huv2Completed: false,
+      attendingPhysician: 'Dr. Thompson, James',
+      status: 'active'
+    },
+
+    // MEDIUM - Period 4, F2F completed
+    {
+      name: 'Garcia, Linda F.',
+      mrNumber: 'MR002345',
+      dateOfBirth: daysAgo(27010),
+      admissionDate: daysAgo(330),
+      startOfCare: daysAgo(330),
+      startingBenefitPeriod: 4,
+      isReadmission: false,
+      priorHospiceDays: 270,
+      f2fRequired: true,
+      f2fCompleted: true,
+      f2fDate: daysAgo(50),
+      f2fPhysician: 'Dr. Wilson, Sarah',
+      huv1Completed: true,
+      huv1Date: daysAgo(315),
+      huv2Completed: true,
+      huv2Date: daysAgo(300),
+      attendingPhysician: 'Dr. Wilson, Sarah',
+      status: 'active'
+    },
+
+    // NORMAL - Just admitted
+    {
+      name: 'Martinez, Thomas G.',
+      mrNumber: 'MR008901',
+      dateOfBirth: daysAgo(25550),
+      admissionDate: daysAgo(5),
+      startOfCare: daysAgo(5),
+      startingBenefitPeriod: 1,
+      isReadmission: false,
+      priorHospiceDays: 0,
+      f2fRequired: false,
+      f2fCompleted: false,
+      huv1Completed: false,
+      huv2Completed: false,
+      attendingPhysician: 'Dr. Lee, Jennifer',
+      status: 'active'
+    },
+
+    // NORMAL - Period 3, everything current
+    {
+      name: 'Rodriguez, Nancy H.',
+      mrNumber: 'MR004567',
+      dateOfBirth: daysAgo(29200),
+      admissionDate: daysAgo(210),
+      startOfCare: daysAgo(210),
+      startingBenefitPeriod: 3,
+      isReadmission: false,
+      priorHospiceDays: 180,
+      f2fRequired: true,
+      f2fCompleted: true,
+      f2fDate: daysAgo(35),
+      f2fPhysician: 'Dr. Brown, David',
+      huv1Completed: true,
+      huv1Date: daysAgo(195),
+      huv2Completed: true,
+      huv2Date: daysAgo(180),
+      attendingPhysician: 'Dr. Brown, David',
+      status: 'active'
+    },
+
+    // DISCHARGED - For testing filters
+    {
+      name: 'Taylor, James I.',
+      mrNumber: 'MR006789',
+      dateOfBirth: daysAgo(27740),
+      admissionDate: daysAgo(60),
+      startOfCare: daysAgo(60),
+      startingBenefitPeriod: 1,
+      isReadmission: false,
+      priorHospiceDays: 0,
+      f2fRequired: false,
+      f2fCompleted: false,
+      huv1Completed: true,
+      huv1Date: daysAgo(45),
+      huv2Completed: false,
+      dischargeDate: daysAgo(3),
+      dischargeReason: 'Deceased',
+      attendingPhysician: 'Dr. Kim, Helen',
+      status: 'discharged'
+    },
+
+    // CRITICAL - Period 5, multiple issues
+    {
+      name: 'Anderson, Barbara J.',
+      mrNumber: 'MR009123',
+      dateOfBirth: daysAgo(32120),
+      admissionDate: daysAgo(354),
+      startOfCare: daysAgo(354),
+      startingBenefitPeriod: 5,
+      isReadmission: false,
+      priorHospiceDays: 300,
+      f2fRequired: true,
+      f2fCompleted: false,
+      huv1Completed: true,
+      huv1Date: daysAgo(339),
+      huv2Completed: true,
+      huv2Date: daysAgo(324),
+      attendingPhysician: 'Dr. Singh, Amar',
+      status: 'active'
+    }
+  ];
+
+  const results = {
+    success: [],
+    failed: []
+  };
+
+  // Add each patient
+  for (const patientData of dummyPatients) {
+    try {
+      const patientsRef = db.collection('organizations')
+        .doc(orgId)
+        .collection('patients');
+      
+      const fullPatientData = {
+        ...patientData,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+        createdBy: userId,
+        updatedBy: userId
       };
 
-    case '90DAY_INITIAL':
-    case '90DAY_SECOND':
-      return {
-        ...baseData,
-        priorPeriodDates: cti.priorPeriodDates || 'N/A',
-        icd10Code: patient.icd10Code || ''
-      };
-
-    case 'ATTEND_CERT':
-      return {
-        ...baseData,
-        attendingPhysicianName: patient.attendingPhysician || '',
-        treatmentDuration: calculateTreatmentDuration(patient.admissionDate)
-      };
-
-    case 'PROGRESS_NOTE':
-      return {
-        ...baseData,
-        visitDate: formatDate(new Date()),
-        providerName: customData.providerName || ''
-      };
-
-    case 'PATIENT_HISTORY':
-      return {
-        ...baseData,
-        age: calculateAge(patient.dateOfBirth),
-        gender: patient.gender || '',
-        referralSource: patient.referralSource || ''
-      };
-
-    case 'F2F_ENCOUNTER':
-      return {
-        ...baseData,
-        encounterDate: formatDate(cti.f2fDate) || formatDate(new Date()),
-        encounterProvider: customData.encounterProvider || '',
-        providerType: customData.providerType || 'Nurse Practitioner',
-        recertPeriodDates: `${formatDate(cti.certStart)} - ${formatDate(cti.certEnd)}`
-      };
-
-    default:
-      return baseData;
+      const docRef = await patientsRef.add(fullPatientData);
+      
+      results.success.push({
+        id: docRef.id,
+        name: patientData.name,
+        mrNumber: patientData.mrNumber
+      });
+    } catch (error) {
+      results.failed.push({
+        name: patientData.name,
+        error: error.message
+      });
+    }
   }
-}
 
-/**
- * Create replace requests for Google Docs API
- */
-function createReplaceRequests(document, mergeData) {
-  const requests = [];
-
-  // Find all merge fields in document
-  const content = document.body.content;
-  const textRuns = extractTextRuns(content);
-
-  // Create replacement requests for each merge field
-  Object.entries(mergeData).forEach(([key, value]) => {
-    const placeholder = `{{${key}}}`;
-    
-    textRuns.forEach(textRun => {
-      if (textRun.text.includes(placeholder)) {
-        requests.push({
-          replaceAllText: {
-            containsText: {
-              text: placeholder,
-              matchCase: true
-            },
-            replaceText: String(value || '')
-          }
-        });
-      }
-    });
-  });
-
-  return requests;
-}
-
-/**
- * Extract text runs from document content
- */
-function extractTextRuns(content, runs = []) {
-  if (!content) return runs;
-
-  content.forEach(element => {
-    if (element.paragraph?.elements) {
-      element.paragraph.elements.forEach(el => {
-        if (el.textRun?.content) {
-          runs.push({ text: el.textRun.content });
-        }
-      });
-    }
-    if (element.table?.tableRows) {
-      element.table.tableRows.forEach(row => {
-        row.tableCells?.forEach(cell => {
-          extractTextRuns(cell.content, runs);
-        });
-      });
-    }
-  });
-
-  return runs;
-}
-
-/**
- * Format date helpers
- */
-function formatDate(date) {
-  if (!date) return '';
-  if (date.toDate) date = date.toDate(); // Firestore Timestamp
-  if (!(date instanceof Date)) date = new Date(date);
-  if (isNaN(date)) return '';
-  
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
-}
-
-function calculateAge(dateOfBirth) {
-  if (!dateOfBirth) return '';
-  const dob = dateOfBirth.toDate ? dateOfBirth.toDate() : new Date(dateOfBirth);
-  const ageDiff = Date.now() - dob.getTime();
-  const ageDate = new Date(ageDiff);
-  return Math.abs(ageDate.getUTCFullYear() - 1970);
-}
-
-function calculateTreatmentDuration(admissionDate) {
-  if (!admissionDate) return 'unknown duration';
-  const admission = admissionDate.toDate ? admissionDate.toDate() : new Date(admissionDate);
-  const months = Math.floor((Date.now() - admission.getTime()) / (30 * 24 * 60 * 60 * 1000));
-  return months > 0 ? `${months} months` : 'less than 1 month';
-}
+  return {
+    message: `Added ${results.success.length} of ${dummyPatients.length} dummy patients`,
+    summary: {
+      total: dummyPatients.length,
+      successful: results.success.length,
+      failed: results.failed.length
+    },
+    results
+  };
+});
