@@ -12,13 +12,16 @@ const { getStorage } = require('firebase-admin/storage');
 const { google } = require('googleapis');
 const nodemailer = require('nodemailer');
 const { defineSecret } = require('firebase-functions/params');
-const { generateCertificationDocs } = require('./generateCertificationDocs');
+
 // Initialize Firebase Admin (check if already initialized)
 try {
   getApp();
 } catch {
   initializeApp();
 }
+
+const { generateCertificationDocs } = require('./generateCertificationDocs');
+const { testEmail } = require('./testEmail');
 
 const db = getFirestore();
 const admin = getAuth();
@@ -615,91 +618,6 @@ exports.refreshUserClaims = onCall(async (request) => {
   }
 });
 
-// ============ EMAIL TESTING FUNCTION ============
-
-/**
- * Send test email to verify configuration
- * Called from NotificationsPage
- */
-exports.testEmail = onCall({
-  secrets: [emailUser, emailPass]
-}, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'Must be authenticated');
-  }
-  
-  const { orgId } = request.data;
-  
-  try {
-    // Get organization settings
-    const orgDoc = await db.collection('organizations').doc(orgId).get();
-    if (!orgDoc.exists) {
-      throw new HttpsError('not-found', 'Organization not found');
-    }
-    
-    const orgData = orgDoc.data();
-    const emailList = orgData.emailList || [];
-    
-    if (emailList.length === 0) {
-      throw new HttpsError('failed-precondition', 'No email recipients configured');
-    }
-    
-    // Create transporter
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: emailUser.value(),
-        pass: emailPass.value()
-      }
-    });
-    
-    // Send test email
-    const mailOptions = {
-      from: `"Harmony HCA" <${emailUser.value()}>`,
-      to: emailList.join(','),
-      subject: '✅ Test Email - Harmony System',
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <body style="font-family: Arial, sans-serif; padding: 20px; background: #f9fafb;">
-          <div style="max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px;">
-            <h2 style="color: #2563eb;">✅ Email System Test Successful</h2>
-            <p>This is a test email from your Harmony Health Care Assistant.</p>
-            <p>If you're seeing this, your email configuration is working correctly!</p>
-            <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
-            <p style="font-size: 12px; color: #6b7280;">
-              Sent: ${new Date().toLocaleString()}<br>
-              Organization: ${orgData.name || orgId}<br>
-              Recipients: ${emailList.length}
-            </p>
-          </div>
-        </body>
-        </html>
-      `
-    };
-    
-    await transporter.sendMail(mailOptions);
-    
-    // Log to notification history
-    await db.collection('organizations').doc(orgId)
-      .collection('notificationHistory').add({
-        type: 'test_email',
-        subject: 'Test Email - Harmony System',
-        recipients: emailList,
-        sentAt: Timestamp.now(),
-        status: 'sent',
-        sentBy: request.auth.uid
-      });
-    
-    return { 
-      success: true, 
-      message: `Test email sent successfully to ${emailList.length} recipient(s)` 
-    };
-    
-  } catch (error) {
-    console.error('Test email error:', error);
-    throw new HttpsError('internal', error.message || 'Failed to send test email');
-  }
-});
-
+exports.testEmail = testEmail;
 exports.generateCertificationDocs = generateCertificationDocs;
+exports.purgeDrive = require('./purgeDrive').purgeDrive;

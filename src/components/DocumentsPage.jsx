@@ -21,14 +21,14 @@ const TEMPLATES = [
     icon: '📋',
   },
   {
-    id: '90DAY1',
+    id: '90DAY_INITIAL',
     name: '90-Day Certification (Initial)',
     description: 'Initial 90-day benefit period certification form',
     periods: ['Period 1'],
     icon: '📋',
   },
   {
-    id: '90DAY2',
+    id: '90DAY_SECOND',
     name: '90-Day Certification (Second)',
     description: 'Second 90-day benefit period certification form',
     periods: ['Period 2'],
@@ -48,6 +48,14 @@ const TEMPLATES = [
     periods: ['Period 2', 'Period 3+'],
     icon: '📝',
   },
+  {
+    id: 'PATIENT_HISTORY',
+    name: 'Patient History',
+    description: 'Patient history documentation',
+    periods: ['Period 1'],
+    icon: '📝',
+  },
+  
   {
     id: 'F2F_ENCOUNTER',
     name: 'Face-to-Face Encounter',
