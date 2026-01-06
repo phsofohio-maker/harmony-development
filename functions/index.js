@@ -620,4 +620,3 @@ exports.refreshUserClaims = onCall(async (request) => {
 
 exports.testEmail = testEmail;
 exports.generateCertificationDocs = generateCertificationDocs;
-exports.purgeDrive = require('./purgeDrive').purgeDrive;

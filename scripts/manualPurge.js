@@ -2,7 +2,7 @@
  * Run this with: node scripts/manualPurge.js
  * (Requires: npm install googleapis)
  */
-const { google } = require('googleapis');
+import { google } from 'googleapis';
 
 async function purgeDrive() {
   console.log('🧹 Starting Drive Cleanup...');

@@ -157,13 +157,11 @@ async function getServiceAccountAuth() {
   });
   return auth;
 }
-/**
- * Prepare merge data based on patient info and document type
- */
+
 function prepareMergeData(patient, documentType, customData) {
   const cti = patient.compliance?.cti || {};
   
-  // Base merge fields common to all documents
+  // 1. Base Data
   const baseData = {
     patientName: patient.name || '',
     dateOfBirth: formatDate(patient.dateOfBirth) || '',
@@ -178,7 +176,8 @@ function prepareMergeData(patient, documentType, customData) {
     ...customData
   };
 
-  // Document-specific fields
+  // 2. Document-Specific Fields
+  // (Notice: This switch is now INSIDE the function)
   switch (documentType) {
     case '60DAY':
       return {
