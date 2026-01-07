@@ -84,7 +84,7 @@ export function determineCertPeriodByBenefit(benefitPeriodNumber, isReadmission 
       shortName: 'Initial 90-Day',
       periodNumber: 1,
       durationDays: 90,
-      documentTypes: ['90DAY1', 'ATTEND_CERT', 'PATIENT_HISTORY'],
+      documentTypes: ['90DAY_INITIAL', 'ATTEND_CERT', 'PATIENT_HISTORY'],
       requiresF2F: isReadmission,
       notifyDaysBefore: 14,
       periodType: '90day'
@@ -95,7 +95,7 @@ export function determineCertPeriodByBenefit(benefitPeriodNumber, isReadmission 
       shortName: '2nd 90-Day',
       periodNumber: 2,
       durationDays: 90,
-      documentTypes: ['90DAY2', 'PROGRESS_NOTE'],
+      documentTypes: ['90DAY_SECOND', 'PROGRESS_NOTE'],
       requiresF2F: isReadmission,
       notifyDaysBefore: 14,
       periodType: '90day'
