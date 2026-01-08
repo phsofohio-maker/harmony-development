@@ -22,6 +22,7 @@ try {
 
 const { generateCertificationDocs } = require('./generateCertificationDocs');
 const { testEmail } = require('./testEmail');
+const { cleanup } = require('./cleanup');
 
 const db = getFirestore();
 const admin = getAuth();
@@ -620,3 +621,4 @@ exports.refreshUserClaims = onCall(async (request) => {
 
 exports.testEmail = testEmail;
 exports.generateCertificationDocs = generateCertificationDocs;
+exports.cleanup = cleanup;

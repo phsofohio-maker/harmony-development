@@ -19,7 +19,6 @@ const serviceAccount = require('../service-account-key.json');
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  projectId: 'parrish-harmonyhca',
   storageBucket: 'parrish-harmonyhca.firebasestorage.app'
 });
 
@@ -29,7 +28,7 @@ const auth = admin.auth();
 // ============ TEST CONFIGURATION ============
 const TEST_CONFIG = {
   orgId: 'org_parrish',
-  patientId: 'qyn8hdFlNnlt5JozoCt0',  // Your patient ID
+  patientId: '8uUbTbb5wFftzAIuxQqG',  // Your patient ID
   documentType: '60DAY',
   userEmail: 'kobet@parrishhealthsystems.org',  // Your email
   
