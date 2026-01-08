@@ -1,288 +1,427 @@
 /**
- * functions/addDummyPatients.js
+ * scripts/addDummyPatients.js
  * 
- * Cloud Function to add dummy patients for testing
+ * Add realistic test patients to your database
+ * Covers various scenarios for testing compliance tracking
  * 
- * DEPLOYMENT:
- * Add this to your functions/index.js or create as separate file
- * 
- * USAGE:
- * firebase functions:call addDummyPatients --data='{"orgId":"org_parrish"}'
- * 
- * Or from your app:
- * const addDummyPatients = httpsCallable(functions, 'addDummyPatients');
- * await addDummyPatients({ orgId: 'org_parrish' });
+ * USAGE: node scripts/addDummyPatients.js
  */
 
-const { onCall } = require('firebase-functions/v2/https');
-const { getFirestore, Timestamp } = require('firebase-admin/firestore');
+const admin = require('firebase-admin');
 
-const db = getFirestore();
+// Initialize without service account - uses Firebase CLI credentials
+admin.initializeApp({
+  projectId: 'parrish-harmonyhca'
+});
 
-exports.addDummyPatients = onCall(async (request) => {
-  const { orgId } = request.data;
-  const userId = request.auth?.uid || 'SYSTEM_DUMMY_DATA';
+const db = admin.firestore();
+const FieldValue = admin.firestore.FieldValue;
+
+// Helper to create dates
+function daysAgo(days) {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  return admin.firestore.Timestamp.fromDate(date);
+}
+
+function yearsAgo(years) {
+  const date = new Date();
+  date.setFullYear(date.getFullYear() - years);
+  return admin.firestore.Timestamp.fromDate(date);
+}
+
+// Dummy patients with various scenarios
+const dummyPatients = [
+  // ============ CRITICAL SCENARIOS ============
   
-  // Validate organization access
-  if (!orgId) {
-    throw new Error('Organization ID required');
+  // Patient 1: Period 1, Certification ending in 3 days (CRITICAL)
+  {
+    name: 'Smith, John A.',
+    mrNumber: 'MR001234',
+    dateOfBirth: yearsAgo(68),
+    admissionDate: daysAgo(87),
+    startOfCare: daysAgo(87),
+    startingBenefitPeriod: 1,
+    isReadmission: false,
+    priorHospiceDays: 0,
+    f2fRequired: false,
+    f2fCompleted: false,
+    huv1Completed: true,
+    huv1Date: daysAgo(72),
+    huv2Completed: false,
+    attendingPhysician: 'Dr. Anderson, Michael',
+    status: 'active'
+  },
+
+  // Patient 2: Period 3 (60-day), F2F overdue (CRITICAL)
+  {
+    name: 'Johnson, Mary B.',
+    mrNumber: 'MR005678',
+    dateOfBirth: yearsAgo(78),
+    admissionDate: daysAgo(245),
+    startOfCare: daysAgo(245),
+    startingBenefitPeriod: 3,
+    isReadmission: false,
+    priorHospiceDays: 180,
+    f2fRequired: true,
+    f2fCompleted: false,
+    huv1Completed: true,
+    huv1Date: daysAgo(230),
+    huv2Completed: true,
+    huv2Date: daysAgo(215),
+    attendingPhysician: 'Dr. Chen, Susan',
+    status: 'active'
+  },
+
+  // Patient 3: Readmission, Period 1, F2F needed (HIGH)
+  {
+    name: 'Williams, Robert C.',
+    mrNumber: 'MR009012',
+    dateOfBirth: yearsAgo(72),
+    admissionDate: daysAgo(45),
+    startOfCare: daysAgo(45),
+    startingBenefitPeriod: 1,
+    isReadmission: true,
+    priorHospiceDays: 120,
+    f2fRequired: true,
+    f2fCompleted: false,
+    huv1Completed: true,
+    huv1Date: daysAgo(30),
+    huv2Completed: false,
+    attendingPhysician: 'Dr. Wilson, Sarah',
+    status: 'active'
+  },
+
+  // Patient 4: Period 2, Cert in 10 days, HUV overdue (HIGH)
+  {
+    name: 'Davis, Patricia D.',
+    mrNumber: 'MR003456',
+    dateOfBirth: yearsAgo(81),
+    admissionDate: daysAgo(170),
+    startOfCare: daysAgo(170),
+    startingBenefitPeriod: 2,
+    isReadmission: false,
+    priorHospiceDays: 90,
+    f2fRequired: false,
+    f2fCompleted: false,
+    huv1Completed: true,
+    huv1Date: daysAgo(155),
+    huv2Completed: false,
+    attendingPhysician: 'Dr. Martinez, Carlos',
+    status: 'active'
+  },
+
+  // ============ NORMAL/CURRENT SCENARIOS ============
+
+  // Patient 5: Just admitted (NORMAL)
+  {
+    name: 'Martinez, Thomas G.',
+    mrNumber: 'MR008901',
+    dateOfBirth: yearsAgo(70),
+    admissionDate: daysAgo(5),
+    startOfCare: daysAgo(5),
+    startingBenefitPeriod: 1,
+    isReadmission: false,
+    priorHospiceDays: 0,
+    f2fRequired: false,
+    f2fCompleted: false,
+    huv1Completed: false,
+    huv2Completed: false,
+    attendingPhysician: 'Dr. Lee, Jennifer',
+    status: 'active'
+  },
+
+  // Patient 6: Period 3, everything current (NORMAL)
+  {
+    name: 'Rodriguez, Nancy H.',
+    mrNumber: 'MR004567',
+    dateOfBirth: yearsAgo(80),
+    admissionDate: daysAgo(210),
+    startOfCare: daysAgo(210),
+    startingBenefitPeriod: 3,
+    isReadmission: false,
+    priorHospiceDays: 180,
+    f2fRequired: true,
+    f2fCompleted: true,
+    f2fDate: daysAgo(35),
+    f2fPhysician: 'Dr. Brown, David',
+    huv1Completed: true,
+    huv1Date: daysAgo(195),
+    huv2Completed: true,
+    huv2Date: daysAgo(180),
+    attendingPhysician: 'Dr. Brown, David',
+    status: 'active'
+  },
+
+  // Patient 7: Mid-Period 1, HUV1 window (NORMAL)
+  {
+    name: 'Garcia, Michael I.',
+    mrNumber: 'MR007890',
+    dateOfBirth: yearsAgo(65),
+    admissionDate: daysAgo(10),
+    startOfCare: daysAgo(10),
+    startingBenefitPeriod: 1,
+    isReadmission: false,
+    priorHospiceDays: 0,
+    f2fRequired: false,
+    f2fCompleted: false,
+    huv1Completed: false,
+    huv2Completed: false,
+    attendingPhysician: 'Dr. Patel, Raj',
+    status: 'active'
+  },
+
+  // Patient 8: Period 2, mid-cycle (NORMAL)
+  {
+    name: 'Anderson, Barbara J.',
+    mrNumber: 'MR009123',
+    dateOfBirth: yearsAgo(88),
+    admissionDate: daysAgo(135),
+    startOfCare: daysAgo(135),
+    startingBenefitPeriod: 2,
+    isReadmission: false,
+    priorHospiceDays: 90,
+    f2fRequired: false,
+    f2fCompleted: false,
+    huv1Completed: true,
+    huv1Date: daysAgo(120),
+    huv2Completed: true,
+    huv2Date: daysAgo(105),
+    attendingPhysician: 'Dr. Thompson, Emily',
+    status: 'active'
+  },
+
+  // Patient 9: Period 4 (60-day), F2F completed (NORMAL)
+  {
+    name: 'Taylor, James K.',
+    mrNumber: 'MR002345',
+    dateOfBirth: yearsAgo(76),
+    admissionDate: daysAgo(285),
+    startOfCare: daysAgo(285),
+    startingBenefitPeriod: 4,
+    isReadmission: false,
+    priorHospiceDays: 240,
+    f2fRequired: true,
+    f2fCompleted: true,
+    f2fDate: daysAgo(20),
+    f2fPhysician: 'Dr. Wilson, Sarah',
+    huv1Completed: true,
+    huv1Date: daysAgo(270),
+    huv2Completed: true,
+    huv2Date: daysAgo(255),
+    attendingPhysician: 'Dr. Wilson, Sarah',
+    status: 'active'
+  },
+
+  // Patient 10: Readmission Period 2 (NORMAL)
+  {
+    name: 'White, Sarah L.',
+    mrNumber: 'MR005432',
+    dateOfBirth: yearsAgo(73),
+    admissionDate: daysAgo(60),
+    startOfCare: daysAgo(60),
+    startingBenefitPeriod: 2,
+    isReadmission: true,
+    priorHospiceDays: 45,
+    f2fRequired: true,
+    f2fCompleted: true,
+    f2fDate: daysAgo(55),
+    f2fPhysician: 'Dr. Kim, Helen',
+    huv1Completed: true,
+    huv1Date: daysAgo(45),
+    huv2Completed: false,
+    attendingPhysician: 'Dr. Kim, Helen',
+    status: 'active'
+  },
+
+  // ============ DISCHARGED PATIENTS (for testing filters) ============
+
+  // Patient 11: Recently discharged - deceased
+  {
+    name: 'Brown, Edward M.',
+    mrNumber: 'MR006789',
+    dateOfBirth: yearsAgo(82),
+    admissionDate: daysAgo(60),
+    startOfCare: daysAgo(60),
+    startingBenefitPeriod: 1,
+    isReadmission: false,
+    priorHospiceDays: 0,
+    f2fRequired: false,
+    f2fCompleted: false,
+    huv1Completed: true,
+    huv1Date: daysAgo(45),
+    huv2Completed: false,
+    dischargeDate: daysAgo(3),
+    dischargeReason: 'Deceased',
+    attendingPhysician: 'Dr. Anderson, Michael',
+    status: 'discharged'
+  },
+
+  // Patient 12: Discharged - revoked
+  {
+    name: 'Miller, Linda N.',
+    mrNumber: 'MR007654',
+    dateOfBirth: yearsAgo(67),
+    admissionDate: daysAgo(30),
+    startOfCare: daysAgo(30),
+    startingBenefitPeriod: 1,
+    isReadmission: false,
+    priorHospiceDays: 0,
+    f2fRequired: false,
+    f2fCompleted: false,
+    huv1Completed: false,
+    huv2Completed: false,
+    dischargeDate: daysAgo(7),
+    dischargeReason: 'Revoked - Patient Choice',
+    attendingPhysician: 'Dr. Lee, Jennifer',
+    status: 'discharged'
+  },
+
+  // ============ EDGE CASES ============
+
+  // Patient 13: Very long stay - Period 6
+  {
+    name: 'Wilson, Charles O.',
+    mrNumber: 'MR008765',
+    dateOfBirth: yearsAgo(91),
+    admissionDate: daysAgo(420),
+    startOfCare: daysAgo(420),
+    startingBenefitPeriod: 6,
+    isReadmission: false,
+    priorHospiceDays: 360,
+    f2fRequired: true,
+    f2fCompleted: true,
+    f2fDate: daysAgo(25),
+    f2fPhysician: 'Dr. Chen, Susan',
+    huv1Completed: true,
+    huv1Date: daysAgo(405),
+    huv2Completed: true,
+    huv2Date: daysAgo(390),
+    attendingPhysician: 'Dr. Chen, Susan',
+    status: 'active'
+  },
+
+  // Patient 14: Young patient
+  {
+    name: 'Young, Emily R.',
+    mrNumber: 'MR009876',
+    dateOfBirth: yearsAgo(42),
+    admissionDate: daysAgo(15),
+    startOfCare: daysAgo(15),
+    startingBenefitPeriod: 1,
+    isReadmission: false,
+    priorHospiceDays: 0,
+    f2fRequired: false,
+    f2fCompleted: false,
+    huv1Completed: true,
+    huv1Date: daysAgo(5),
+    huv2Completed: false,
+    attendingPhysician: 'Dr. Martinez, Carlos',
+    status: 'active'
+  },
+
+  // Patient 15: Multiple readmission, high prior days
+  {
+    name: 'Thompson, George P.',
+    mrNumber: 'MR001111',
+    dateOfBirth: yearsAgo(85),
+    admissionDate: daysAgo(20),
+    startOfCare: daysAgo(20),
+    startingBenefitPeriod: 1,
+    isReadmission: true,
+    priorHospiceDays: 275,
+    f2fRequired: true,
+    f2fCompleted: false,
+    huv1Completed: true,
+    huv1Date: daysAgo(8),
+    huv2Completed: false,
+    attendingPhysician: 'Dr. Patel, Raj',
+    status: 'active'
   }
+];
 
-  // Only allow admins/owners to add dummy data
-  const role = request.auth?.token?.role;
-  if (role !== 'owner' && role !== 'admin') {
-    throw new Error('Insufficient permissions. Owner or Admin role required.');
-  }
+async function addDummyPatients() {
+  console.log('\n═══════════════════════════════════════════════════════');
+  console.log('  ADDING DUMMY PATIENTS');
+  console.log('═══════════════════════════════════════════════════════\n');
 
-  // Helper to create dates
-  const daysAgo = (days) => {
-    const date = new Date();
-    date.setDate(date.getDate() - days);
-    return Timestamp.fromDate(date);
-  };
+  const orgId = 'org_parrish';
+  const userId = 'SYSTEM_DUMMY_DATA';
 
-  const dummyPatients = [
-    // CRITICAL - Period 1, Cert ending in 3 days
-    {
-      name: 'Smith, John A.',
-      mrNumber: 'MR001234',
-      dateOfBirth: daysAgo(24820),
-      admissionDate: daysAgo(87),
-      startOfCare: daysAgo(87),
-      startingBenefitPeriod: 1,
-      isReadmission: false,
-      priorHospiceDays: 0,
-      f2fRequired: false,
-      f2fCompleted: false,
-      huv1Completed: true,
-      huv1Date: daysAgo(72),
-      huv2Completed: false,
-      attendingPhysician: 'Dr. Anderson, Michael',
-      status: 'active'
-    },
+  try {
+    console.log(`Adding ${dummyPatients.length} test patients to organization: ${orgId}\n`);
 
-    // CRITICAL - Period 3 (60-day), F2F overdue
-    {
-      name: 'Johnson, Mary B.',
-      mrNumber: 'MR005678',
-      dateOfBirth: daysAgo(28470),
-      admissionDate: daysAgo(245),
-      startOfCare: daysAgo(245),
-      startingBenefitPeriod: 3,
-      isReadmission: false,
-      priorHospiceDays: 180,
-      f2fRequired: true,
-      f2fCompleted: false,
-      huv1Completed: true,
-      huv1Date: daysAgo(230),
-      huv2Completed: true,
-      huv2Date: daysAgo(215),
-      attendingPhysician: 'Dr. Chen, Susan',
-      status: 'active'
-    },
+    const batch = db.batch();
+    const patientsRef = db.collection('organizations').doc(orgId).collection('patients');
 
-    // HIGH - Period 2, Cert in 10 days, HUV overdue
-    {
-      name: 'Williams, Robert C.',
-      mrNumber: 'MR009012',
-      dateOfBirth: daysAgo(26280),
-      admissionDate: daysAgo(170),
-      startOfCare: daysAgo(170),
-      startingBenefitPeriod: 2,
-      isReadmission: false,
-      priorHospiceDays: 90,
-      f2fRequired: false,
-      f2fCompleted: false,
-      huv1Completed: true,
-      huv1Date: daysAgo(155),
-      huv2Completed: false,
-      attendingPhysician: 'Dr. Patel, Rajesh',
-      status: 'active'
-    },
+    let addedCount = 0;
 
-    // HIGH - Readmission, F2F pending
-    {
-      name: 'Brown, Patricia D.',
-      mrNumber: 'MR003456',
-      dateOfBirth: daysAgo(30660),
-      admissionDate: daysAgo(15),
-      startOfCare: daysAgo(15),
-      startingBenefitPeriod: 2,
-      isReadmission: true,
-      priorHospiceDays: 45,
-      f2fRequired: true,
-      f2fCompleted: false,
-      huv1Completed: false,
-      huv2Completed: false,
-      attendingPhysician: 'Dr. Martinez, Carlos',
-      status: 'active'
-    },
-
-    // MEDIUM - Period 1, mid-cycle
-    {
-      name: 'Davis, Michael E.',
-      mrNumber: 'MR007890',
-      dateOfBirth: daysAgo(23360),
-      admissionDate: daysAgo(45),
-      startOfCare: daysAgo(45),
-      startingBenefitPeriod: 1,
-      isReadmission: false,
-      priorHospiceDays: 0,
-      f2fRequired: false,
-      f2fCompleted: false,
-      huv1Completed: true,
-      huv1Date: daysAgo(31),
-      huv2Completed: false,
-      attendingPhysician: 'Dr. Thompson, James',
-      status: 'active'
-    },
-
-    // MEDIUM - Period 4, F2F completed
-    {
-      name: 'Garcia, Linda F.',
-      mrNumber: 'MR002345',
-      dateOfBirth: daysAgo(27010),
-      admissionDate: daysAgo(330),
-      startOfCare: daysAgo(330),
-      startingBenefitPeriod: 4,
-      isReadmission: false,
-      priorHospiceDays: 270,
-      f2fRequired: true,
-      f2fCompleted: true,
-      f2fDate: daysAgo(50),
-      f2fPhysician: 'Dr. Wilson, Sarah',
-      huv1Completed: true,
-      huv1Date: daysAgo(315),
-      huv2Completed: true,
-      huv2Date: daysAgo(300),
-      attendingPhysician: 'Dr. Wilson, Sarah',
-      status: 'active'
-    },
-
-    // NORMAL - Just admitted
-    {
-      name: 'Martinez, Thomas G.',
-      mrNumber: 'MR008901',
-      dateOfBirth: daysAgo(25550),
-      admissionDate: daysAgo(5),
-      startOfCare: daysAgo(5),
-      startingBenefitPeriod: 1,
-      isReadmission: false,
-      priorHospiceDays: 0,
-      f2fRequired: false,
-      f2fCompleted: false,
-      huv1Completed: false,
-      huv2Completed: false,
-      attendingPhysician: 'Dr. Lee, Jennifer',
-      status: 'active'
-    },
-
-    // NORMAL - Period 3, everything current
-    {
-      name: 'Rodriguez, Nancy H.',
-      mrNumber: 'MR004567',
-      dateOfBirth: daysAgo(29200),
-      admissionDate: daysAgo(210),
-      startOfCare: daysAgo(210),
-      startingBenefitPeriod: 3,
-      isReadmission: false,
-      priorHospiceDays: 180,
-      f2fRequired: true,
-      f2fCompleted: true,
-      f2fDate: daysAgo(35),
-      f2fPhysician: 'Dr. Brown, David',
-      huv1Completed: true,
-      huv1Date: daysAgo(195),
-      huv2Completed: true,
-      huv2Date: daysAgo(180),
-      attendingPhysician: 'Dr. Brown, David',
-      status: 'active'
-    },
-
-    // DISCHARGED - For testing filters
-    {
-      name: 'Taylor, James I.',
-      mrNumber: 'MR006789',
-      dateOfBirth: daysAgo(27740),
-      admissionDate: daysAgo(60),
-      startOfCare: daysAgo(60),
-      startingBenefitPeriod: 1,
-      isReadmission: false,
-      priorHospiceDays: 0,
-      f2fRequired: false,
-      f2fCompleted: false,
-      huv1Completed: true,
-      huv1Date: daysAgo(45),
-      huv2Completed: false,
-      dischargeDate: daysAgo(3),
-      dischargeReason: 'Deceased',
-      attendingPhysician: 'Dr. Kim, Helen',
-      status: 'discharged'
-    },
-
-    // CRITICAL - Period 5, multiple issues
-    {
-      name: 'Anderson, Barbara J.',
-      mrNumber: 'MR009123',
-      dateOfBirth: daysAgo(32120),
-      admissionDate: daysAgo(354),
-      startOfCare: daysAgo(354),
-      startingBenefitPeriod: 5,
-      isReadmission: false,
-      priorHospiceDays: 300,
-      f2fRequired: true,
-      f2fCompleted: false,
-      huv1Completed: true,
-      huv1Date: daysAgo(339),
-      huv2Completed: true,
-      huv2Date: daysAgo(324),
-      attendingPhysician: 'Dr. Singh, Amar',
-      status: 'active'
-    }
-  ];
-
-  const results = {
-    success: [],
-    failed: []
-  };
-
-  // Add each patient
-  for (const patientData of dummyPatients) {
-    try {
-      const patientsRef = db.collection('organizations')
-        .doc(orgId)
-        .collection('patients');
+    for (const patientData of dummyPatients) {
+      // Create patient document
+      const patientRef = patientsRef.doc();
       
-      const fullPatientData = {
+      const patient = {
         ...patientData,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
         createdBy: userId,
         updatedBy: userId
       };
 
-      const docRef = await patientsRef.add(fullPatientData);
-      
-      results.success.push({
-        id: docRef.id,
-        name: patientData.name,
-        mrNumber: patientData.mrNumber
-      });
-    } catch (error) {
-      results.failed.push({
-        name: patientData.name,
-        error: error.message
-      });
-    }
-  }
+      batch.set(patientRef, patient);
+      addedCount++;
 
-  return {
-    message: `Added ${results.success.length} of ${dummyPatients.length} dummy patients`,
-    summary: {
-      total: dummyPatients.length,
-      successful: results.success.length,
-      failed: results.failed.length
-    },
-    results
-  };
-});
+      console.log(`✅ Queued: ${patientData.name} (${patientData.mrNumber})`);
+      console.log(`   Period ${patientData.startingBenefitPeriod}, ${patientData.isReadmission ? 'Readmission' : 'New'}, ${patientData.status}`);
+    }
+
+    console.log('\n📝 Committing batch write...');
+    await batch.commit();
+
+    console.log(`\n✅ Successfully added ${addedCount} patients!\n`);
+
+    // Show summary
+    console.log('📊 Patient Summary:');
+    const activeCount = dummyPatients.filter(p => p.status === 'active').length;
+    const dischargedCount = dummyPatients.filter(p => p.status === 'discharged').length;
+    const readmissionCount = dummyPatients.filter(p => p.isReadmission).length;
+    const f2fRequiredCount = dummyPatients.filter(p => p.f2fRequired).length;
+
+    console.log(`   Active: ${activeCount}`);
+    console.log(`   Discharged: ${dischargedCount}`);
+    console.log(`   Readmissions: ${readmissionCount}`);
+    console.log(`   F2F Required: ${f2fRequiredCount}`);
+
+    console.log('\n📋 Benefit Period Distribution:');
+    const periodCounts = {};
+    dummyPatients.forEach(p => {
+      if (p.status === 'active') {
+        periodCounts[p.startingBenefitPeriod] = (periodCounts[p.startingBenefitPeriod] || 0) + 1;
+      }
+    });
+    Object.entries(periodCounts).sort(([a], [b]) => a - b).forEach(([period, count]) => {
+      console.log(`   Period ${period}: ${count} patient(s)`);
+    });
+
+    console.log('\n🎯 Next Steps:');
+    console.log('   1. Login to your Harmony app');
+    console.log('   2. Check the Dashboard for urgent attention items');
+    console.log('   3. Navigate to Patients page to see all test data');
+    console.log('   4. Test certifications, HUV, and F2F tracking\n');
+
+    console.log('═══════════════════════════════════════════════════════\n');
+
+  } catch (error) {
+    console.error('\n❌ ERROR adding patients:', error.message);
+    console.error('\nFull error:', error);
+    process.exit(1);
+  }
+}
+
+// Run the script
+addDummyPatients()
+  .then(() => process.exit(0))
+  .catch(error => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });
