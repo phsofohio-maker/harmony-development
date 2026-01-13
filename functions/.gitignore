@@ -1,2 +1,4 @@
 node_modules/
 *.local
+functions/service-account-key.json
+functions/SERVICE_ACCOUNT_JSON
