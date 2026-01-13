@@ -1,586 +1,1005 @@
 /**
- * DocumentsPage.jsx - Document Generation with Google Docs Integration
- * Updated to call Cloud Functions for real document generation
+ * DocumentsPage.jsx - Document Generation UI
+ * Updated for Stateless PDF Generation (No Google Drive dependency)
+ * 
+ * Changes from previous version:
+ * - Calls 'generateDocument' instead of 'generateCertificationDocs'
+ * - Fetches templates from Firestore instead of hardcoded array
+ * - Shows URL expiration status
+ * - Better error handling and loading states
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getPatients } from '../services/patientService';
 import { formatDate } from '../services/certificationCalculations';
 import { httpsCallable } from 'firebase/functions';
 import { functions, db } from '../lib/firebase';
-import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { 
+  collection, 
+  query, 
+  orderBy, 
+  limit, 
+  getDocs,
+  where 
+} from 'firebase/firestore';
 
-// Document templates configuration
-const TEMPLATES = [
-  {
-    id: '60DAY',
-    name: '60-Day Certification',
-    description: 'Subsequent 60-day benefit period certification form',
-    periods: ['Period 3+'],
-    icon: '📋',
-  },
-  {
-    id: '90DAY_INITIAL',
-    name: '90-Day Certification (Initial)',
-    description: 'Initial 90-day benefit period certification form',
-    periods: ['Period 1'],
-    icon: '📋',
-  },
-  {
-    id: '90DAY_SECOND',
-    name: '90-Day Certification (Second)',
-    description: 'Second 90-day benefit period certification form',
-    periods: ['Period 2'],
-    icon: '📋',
-  },
-  {
-    id: 'ATTEND_CERT',
-    name: 'Attending Physician Certification',
-    description: 'Certification statement from attending physician',
-    periods: ['Period 1'],
-    icon: '👨‍⚕️',
-  },
-  {
-    id: 'PROGRESS_NOTE',
-    name: 'Progress Note',
-    description: 'Clinical progress documentation',
-    periods: ['Period 2', 'Period 3+'],
-    icon: '📝',
-  },
-  {
-    id: 'PATIENT_HISTORY',
-    name: 'Patient History',
-    description: 'Patient history documentation',
-    periods: ['Period 1'],
-    icon: '📝',
-  },
-  
-  {
-    id: 'F2F_ENCOUNTER',
-    name: 'Face-to-Face Encounter',
-    description: 'F2F encounter documentation for recertification',
-    periods: ['Period 3+', 'Readmissions'],
-    icon: '🤝',
-  },
-];
-
+// ============ Document Generation Page ============
 const DocumentsPage = () => {
   const { user, userProfile } = useAuth();
   const orgId = userProfile?.organizationId || 'org_parrish';
 
   // Data state
   const [patients, setPatients] = useState([]);
+  const [templates, setTemplates] = useState([]);
   const [recentDocs, setRecentDocs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Quick generate state
+  // Selection state
   const [selectedPatientId, setSelectedPatientId] = useState('');
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+
+  // Generation state
   const [generating, setGenerating] = useState(false);
   const [generationStatus, setGenerationStatus] = useState(null);
 
-  // Load patients and recent documents
-  useEffect(() => {
-    loadData();
-  }, [orgId]);
+  // View state
+  const [activeTab, setActiveTab] = useState('generate'); // 'generate' | 'history'
+  const [patientFilter, setPatientFilter] = useState('');
 
-  const loadData = async () => {
+  // ============ Data Loading ============
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      
+      setError(null);
+
       // Load patients
       const patientsData = await getPatients(orgId, { status: 'active' });
       setPatients(patientsData);
-      
+
+      // Load templates from Firestore
+      const templatesRef = collection(db, 'organizations', orgId, 'documentTemplates');
+      const templatesSnapshot = await getDocs(templatesRef);
+      const templatesData = templatesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setTemplates(templatesData);
+
       // Load recent documents
       const docsRef = collection(db, 'organizations', orgId, 'generatedDocuments');
-      const docsQuery = query(docsRef, orderBy('generatedAt', 'desc'), limit(10));
+      const docsQuery = query(docsRef, orderBy('generatedAt', 'desc'), limit(20));
       const docsSnapshot = await getDocs(docsQuery);
-      
       const docs = docsSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        generatedAt: doc.data().generatedAt?.toDate()
+        generatedAt: doc.data().generatedAt?.toDate(),
+        urlExpiresAt: doc.data().urlExpiresAt?.toDate()
       }));
-      
       setRecentDocs(docs);
-      
+
     } catch (err) {
       console.error('Error loading data:', err);
+      setError('Failed to load data. Please refresh the page.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [orgId]);
 
-  // Get selected patient
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // ============ Computed Values ============
   const selectedPatient = patients.find(p => p.id === selectedPatientId);
-
-  // Get required documents for selected patient
+  
   const getRequiredDocs = () => {
-    if (!selectedPatient) return [];
-    const cti = selectedPatient.compliance?.cti;
-    if (!cti) return [];
-    return cti.requiredDocuments || [];
+    if (!selectedPatient?.compliance?.cti) return [];
+    return selectedPatient.compliance.cti.requiredDocuments || [];
   };
 
-// Generate all documents for a patient
-const handleGenerateAll = async () => {
-  if (!selectedPatient) {
-    alert('Please select a patient first.');
-    return;
-  }
+  const getApplicableTemplates = () => {
+    if (!selectedPatient) return templates;
+    const period = selectedPatient.compliance?.cti?.periodShortName || '';
+    return templates.filter(t => {
+      if (!t.applicablePeriods || t.applicablePeriods.length === 0) return true;
+      return t.applicablePeriods.some(p => period.includes(p) || p.includes(period));
+    });
+  };
 
-  setGenerating(true);
-  setGenerationStatus({ type: 'info', message: 'Generating documents...' });
-  
-  try {
-    const requiredDocs = getRequiredDocs();
-    
-    if (requiredDocs.length === 0) {
-      throw new Error('No required documents found for this patient');
+  const isUrlExpired = (expiresAt) => {
+    if (!expiresAt) return true;
+    return new Date(expiresAt) < new Date();
+  };
+
+  // ============ Document Generation ============
+  const handleGenerateSingle = async (templateId) => {
+    if (!selectedPatient) {
+      setGenerationStatus({
+        type: 'error',
+        message: 'Please select a patient first.'
+      });
+      return;
     }
 
-    // Generate each document sequentially
-    const results = [];
-    for (const docType of requiredDocs) {
-      try {
-        const generateDocument = httpsCallable(functions, 'generateCertificationDocs');
-        const result = await generateDocument({
-          patientId: selectedPatient.id,
-          documentType: docType,  // ✅ FIXED: Added documentType
-          customData: {}
+    const template = templates.find(t => t.id === templateId);
+    if (!template) return;
+
+    setGenerating(true);
+    setGenerationStatus({
+      type: 'info',
+      message: `Generating ${template.name}...`
+    });
+
+    try {
+      // Call NEW stateless function
+      const generateDocFn = httpsCallable(functions, 'generateDocument');
+      const result = await generateDocFn({
+        patientId: selectedPatient.id,
+        documentType: templateId,
+        customData: {}
+      });
+
+      if (result.data.success) {
+        setGenerationStatus({
+          type: 'success',
+          message: `${template.name} generated successfully!`,
+          downloadUrl: result.data.downloadUrl,
+          fileName: result.data.fileName,
+          expiresAt: result.data.expiresAt
         });
         
-        results.push({ 
-          docType, 
-          success: true, 
-          data: result.data,
-          documentLink: result.data.downloadUrl
+        // Reload recent documents
+        await loadData();
+      }
+    } catch (err) {
+      console.error('Document generation error:', err);
+      setGenerationStatus({
+        type: 'error',
+        message: `Failed to generate ${template.name}: ${err.message}`
+      });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleGenerateAll = async () => {
+    if (!selectedPatient) {
+      setGenerationStatus({
+        type: 'error',
+        message: 'Please select a patient first.'
+      });
+      return;
+    }
+
+    const requiredDocs = getRequiredDocs();
+    if (requiredDocs.length === 0) {
+      setGenerationStatus({
+        type: 'error',
+        message: 'No required documents found for this patient\'s current period.'
+      });
+      return;
+    }
+
+    setGenerating(true);
+    setGenerationStatus({
+      type: 'info',
+      message: `Generating ${requiredDocs.length} documents...`
+    });
+
+    const results = [];
+    const generateDocFn = httpsCallable(functions, 'generateDocument');
+
+    for (const docType of requiredDocs) {
+      try {
+        const result = await generateDocFn({
+          patientId: selectedPatient.id,
+          documentType: docType,
+          customData: {}
         });
-      } catch (error) {
-        console.error(`Error generating ${docType}:`, error);
-        results.push({ 
-          docType, 
-          success: false, 
-          error: error.message 
+        results.push({
+          docType,
+          success: true,
+          data: result.data
+        });
+      } catch (err) {
+        console.error(`Error generating ${docType}:`, err);
+        results.push({
+          docType,
+          success: false,
+          error: err.message
         });
       }
     }
-    
+
     const successCount = results.filter(r => r.success).length;
-    
     setGenerationStatus({
-      type: successCount > 0 ? 'success' : 'error',
-      message: `✓ Generated ${successCount} of ${requiredDocs.length} documents for ${selectedPatient.name}`,
+      type: successCount === requiredDocs.length ? 'success' : 'warning',
+      message: `Generated ${successCount} of ${requiredDocs.length} documents`,
       results
     });
-    
-    // Reload recent documents
+
     await loadData();
-    
-  } catch (error) {
-    console.error('Document generation error:', error);
-    setGenerationStatus({
-      type: 'error',
-      message: `✗ Failed to generate documents: ${error.message}`
-    });
-  } finally {
     setGenerating(false);
-  }
-};
-
-// Generate a single template
-const handleGenerateSingle = async (template) => {
-  if (!selectedPatient) {
-    alert('Please select a patient first using the Quick Generate section above.');
-    return;
-  }
-
-  setGenerating(true);
-  setGenerationStatus({ type: 'info', message: `Generating ${template.name}...` });
-  
-  try {
-    const generateDocument = httpsCallable(functions, 'generateCertificationDocs');
-    const result = await generateDocument({
-      patientId: selectedPatient.id,
-      documentType: template.id,  // ✅ FIXED: Changed from "templateType" to "documentType"
-      customData: {}
-    });
-    
-    if (result.data.success) {
-      setGenerationStatus({
-        type: 'success',
-        message: `✓ ${template.name} generated successfully!`,
-        documentLink: result.data.downloadUrl,  // Updated to match Cloud Function response
-        pdfLink: result.data.downloadUrl
-      });
-      
-      await loadData();
-    }
-    
-  } catch (error) {
-    console.error('Document generation error:', error);
-    setGenerationStatus({
-      type: 'error',
-      message: `✗ Failed to generate ${template.name}: ${error.message}`
-    });
-  } finally {
-    setGenerating(false);
-  }
-};
-  // Open document in new tab
-  const openDocument = (link) => {
-    window.open(link, '_blank');
   };
 
+  // ============ Render Helpers ============
+  const renderPatientSummary = () => {
+    if (!selectedPatient) return null;
+    
+    const cti = selectedPatient.compliance?.cti || {};
+    const requiredDocs = getRequiredDocs();
+
+    return (
+      <div className="patient-summary-card">
+        <div className="patient-header">
+          <h4>{selectedPatient.name}</h4>
+          <span className={`status-badge ${cti.status?.toLowerCase()}`}>
+            {cti.status || 'Unknown'}
+          </span>
+        </div>
+        
+        <div className="patient-details">
+          <div className="detail-row">
+            <span className="label">MRN:</span>
+            <span className="value">{selectedPatient.mrNumber || 'N/A'}</span>
+          </div>
+          <div className="detail-row">
+            <span className="label">Current Period:</span>
+            <span className="value">{cti.periodShortName || 'N/A'}</span>
+          </div>
+          <div className="detail-row">
+            <span className="label">Days Until Cert:</span>
+            <span className={`value ${cti.daysUntilCertEnd <= 5 ? 'urgent' : ''}`}>
+              {cti.daysUntilCertEnd ?? 'N/A'}
+            </span>
+          </div>
+          {cti.requiresF2F && (
+            <div className="detail-row f2f-alert">
+              <span className="label">⚠️ F2F Required:</span>
+              <span className="value">{selectedPatient.f2fCompleted ? 'Completed' : 'Pending'}</span>
+            </div>
+          )}
+        </div>
+
+        {requiredDocs.length > 0 && (
+          <div className="required-docs">
+            <h5>Required Documents ({requiredDocs.length}):</h5>
+            <ul>
+              {requiredDocs.map(doc => (
+                <li key={doc}>{doc.replace(/_/g, ' ')}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderGenerationStatus = () => {
+    if (!generationStatus) return null;
+
+    const iconMap = {
+      info: '⏳',
+      success: '✅',
+      warning: '⚠️',
+      error: '❌'
+    };
+
+    return (
+      <div className={`status-banner ${generationStatus.type}`}>
+        <span className="status-icon">{iconMap[generationStatus.type]}</span>
+        <div className="status-content">
+          <p className="status-message">{generationStatus.message}</p>
+          
+          {generationStatus.downloadUrl && (
+            <div className="status-actions">
+              <a 
+                href={generationStatus.downloadUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="btn btn-sm btn-primary"
+              >
+                📥 Download PDF
+              </a>
+              {generationStatus.expiresAt && (
+                <span className="expires-note">
+                  Link expires: {new Date(generationStatus.expiresAt).toLocaleDateString()}
+                </span>
+              )}
+            </div>
+          )}
+
+          {generationStatus.results && (
+            <div className="results-list">
+              {generationStatus.results.map((r, idx) => (
+                <div key={idx} className={`result-item ${r.success ? 'success' : 'error'}`}>
+                  {r.success ? '✓' : '✗'} {r.docType.replace(/_/g, ' ')}
+                  {r.success && r.data?.downloadUrl && (
+                    <a href={r.data.downloadUrl} target="_blank" rel="noopener noreferrer">
+                      Download
+                    </a>
+                  )}
+                  {!r.success && <span className="error-msg">{r.error}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <button 
+          className="status-close"
+          onClick={() => setGenerationStatus(null)}
+        >
+          ×
+        </button>
+      </div>
+    );
+  };
+
+  // ============ Main Render ============
   if (loading) {
     return (
       <div className="page-loading">
-        <div className="spinner" />
+        <div className="spinner"></div>
         <p>Loading documents...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="page-error">
+        <p>{error}</p>
+        <button onClick={loadData} className="btn btn-primary">
+          Retry
+        </button>
       </div>
     );
   }
 
   return (
     <div className="documents-page">
-      {/* Quick Generate Section */}
-      <div className="quick-generate-card">
-        <div className="card-header">
-          <h3>⚡ Quick Generate Documents</h3>
-        </div>
-        <div className="card-body">
-          <p className="section-description">
-            Select a patient to automatically generate all required documents for their current certification period.
-          </p>
+      {/* Page Header */}
+      <div className="page-header">
+        <h2>📄 Document Generation</h2>
+        <p className="subtitle">Generate certification documents using stateless PDF generation</p>
+      </div>
 
-          <div className="generate-form">
-            <div className="form-group">
-              <label htmlFor="patientSelect">Select Patient</label>
+      {/* Tab Navigation */}
+      <div className="tab-nav">
+        <button 
+          className={`tab-btn ${activeTab === 'generate' ? 'active' : ''}`}
+          onClick={() => setActiveTab('generate')}
+        >
+          ⚡ Generate
+        </button>
+        <button 
+          className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
+          onClick={() => setActiveTab('history')}
+        >
+          🕐 History ({recentDocs.length})
+        </button>
+      </div>
+
+      {/* Generation Status Banner */}
+      {renderGenerationStatus()}
+
+      {/* Generate Tab */}
+      {activeTab === 'generate' && (
+        <div className="generate-section">
+          {/* Patient Selection */}
+          <div className="card">
+            <div className="card-header">
+              <h3>1. Select Patient</h3>
+            </div>
+            <div className="card-body">
               <select
-                id="patientSelect"
                 value={selectedPatientId}
                 onChange={(e) => {
                   setSelectedPatientId(e.target.value);
                   setGenerationStatus(null);
                 }}
-                disabled={loading || generating}
+                className="patient-select"
+                disabled={generating}
               >
                 <option value="">Choose a patient...</option>
                 {patients.map(p => (
                   <option key={p.id} value={p.id}>
-                    {p.name} ({p.mrNumber || 'No MR#'}) - {p.compliance?.cti?.periodShortName || 'N/A'}
+                    {p.name} • {p.mrNumber || 'No MRN'} • {p.compliance?.cti?.periodShortName || 'N/A'}
                   </option>
                 ))}
               </select>
-            </div>
 
-            <button 
-              className="btn btn-primary"
-              onClick={handleGenerateAll}
-              disabled={!selectedPatientId || generating}
-            >
-              {generating ? '⏳ Generating...' : '📄 Generate All Documents'}
-            </button>
+              {renderPatientSummary()}
+            </div>
           </div>
 
-          {/* Generation Status */}
-          {generationStatus && (
-            <div className={`status-message status-${generationStatus.type}`}>
-              <p>{generationStatus.message}</p>
-              
-              {generationStatus.documentLink && (
-                <div className="status-links">
-                  <button 
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => openDocument(generationStatus.documentLink)}
-                  >
-                    📝 Open Document
-                  </button>
-                  <button 
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => openDocument(generationStatus.pdfLink)}
-                  >
-                    📄 View PDF
-                  </button>
-                </div>
-              )}
-              
-              {generationStatus.results && (
-                <div className="generation-results">
-                  <h4>Generation Results:</h4>
-                  <ul>
-                    {generationStatus.results.map((result, idx) => (
-                      <li key={idx} className={result.success ? 'success' : 'error'}>
-                        {result.success ? '✓' : '✗'} {result.docType}
-                        {result.documentLink && (
-                          <button 
-                            className="link-btn"
-                            onClick={() => openDocument(result.documentLink)}
-                          >
-                            View
-                          </button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Selected Patient Info */}
+          {/* Quick Generate */}
           {selectedPatient && (
-            <div className="selected-patient-info">
-              <div className="patient-summary">
-                <div className="summary-item">
-                  <span className="summary-label">Patient</span>
-                  <span className="summary-value">{selectedPatient.name}</span>
-                </div>
-                <div className="summary-item">
-                  <span className="summary-label">Current Period</span>
-                  <span className="summary-value">
-                    {selectedPatient.compliance?.cti?.periodShortName || 'N/A'}
-                  </span>
-                </div>
-                <div className="summary-item">
-                  <span className="summary-label">Cert End Date</span>
-                  <span className="summary-value">
-                    {formatDate(selectedPatient.compliance?.cti?.certificationEndDate)}
-                  </span>
-                </div>
-                <div className="summary-item">
-                  <span className="summary-label">Days Remaining</span>
-                  <span className={`summary-value ${selectedPatient.compliance?.cti?.daysUntilCertEnd <= 7 ? 'urgent' : ''}`}>
-                    {selectedPatient.compliance?.cti?.daysUntilCertEnd ?? 'N/A'}
-                  </span>
-                </div>
+            <div className="card">
+              <div className="card-header">
+                <h3>2. Quick Generate</h3>
+                <button 
+                  className="btn btn-primary"
+                  onClick={handleGenerateAll}
+                  disabled={generating || getRequiredDocs().length === 0}
+                >
+                  {generating ? '⏳ Generating...' : `📄 Generate All (${getRequiredDocs().length})`}
+                </button>
               </div>
-
-              <div className="required-docs">
-                <h4>Required Documents:</h4>
-                <ul>
-                  {getRequiredDocs().map(doc => (
-                    <li key={doc}>
-                      <span className="doc-icon">📄</span>
-                      {doc.replace(/_/g, ' ')}
-                    </li>
-                  ))}
-                  {selectedPatient.compliance?.cti?.requiresF2F && !selectedPatient.f2fCompleted && (
-                    <li className="f2f-required">
-                      <span className="doc-icon">🤝</span>
-                      F2F Encounter Documentation (Required)
-                    </li>
-                  )}
-                </ul>
+              <div className="card-body">
+                <p className="help-text">
+                  Click "Generate All" to create all required documents for {selectedPatient.name}'s 
+                  current certification period, or select individual templates below.
+                </p>
               </div>
             </div>
           )}
-        </div>
-      </div>
 
-      {/* Template Library */}
-      <div className="templates-card">
-        <div className="card-header">
-          <h3>📚 Document Templates</h3>
-          <span className="info-badge">Google Docs Integration</span>
-        </div>
-        <div className="card-body">
-          <p className="section-description">
-            Generate individual documents from templates. Select a patient above first.
-          </p>
-          <div className="templates-grid">
-            {TEMPLATES.map(template => (
-              <div key={template.id} className="template-item">
-                <div className="template-icon">{template.icon}</div>
-                <div className="template-content">
-                  <h4>{template.name}</h4>
-                  <p>{template.description}</p>
-                  <div className="template-periods">
-                    {template.periods.map(period => (
-                      <span key={period} className="period-tag">{period}</span>
-                    ))}
-                  </div>
+          {/* Template Library */}
+          <div className="card">
+            <div className="card-header">
+              <h3>📚 Document Templates</h3>
+              <span className="badge">{templates.length} available</span>
+            </div>
+            <div className="card-body">
+              {templates.length === 0 ? (
+                <div className="empty-state">
+                  <p>No templates configured.</p>
+                  <small>Run <code>node scripts/initDocumentTemplates.js</code> to set up templates.</small>
                 </div>
-                <div className="template-actions">
-                  <button 
-                    className="btn btn-outline btn-sm"
-                    onClick={() => handleGenerateSingle(template)}
-                    disabled={!selectedPatient || generating}
-                  >
-                    Generate
-                  </button>
+              ) : (
+                <div className="templates-grid">
+                  {templates.map(template => {
+                    const isApplicable = !selectedPatient || getApplicableTemplates().some(t => t.id === template.id);
+                    return (
+                      <div 
+                        key={template.id} 
+                        className={`template-card ${!isApplicable ? 'not-applicable' : ''}`}
+                      >
+                        <div className="template-icon">
+                          {template.documentType?.includes('F2F') ? '🤝' : '📋'}
+                        </div>
+                        <div className="template-info">
+                          <h4>{template.name}</h4>
+                          <p>{template.description}</p>
+                          <div className="template-periods">
+                            {template.applicablePeriods?.map(period => (
+                              <span key={period} className="period-tag">{period}</span>
+                            ))}
+                          </div>
+                        </div>
+                        <button
+                          className="btn btn-sm btn-outline"
+                          onClick={() => handleGenerateSingle(template.id)}
+                          disabled={!selectedPatient || generating}
+                        >
+                          Generate
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
-            ))}
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Recently Generated */}
-      <div className="recent-card">
-        <div className="card-header">
-          <h3>🕐 Recently Generated Documents</h3>
-        </div>
-        <div className="card-body">
-          {recentDocs.length === 0 ? (
-            <div className="empty-state">
-              <p>No documents generated yet.</p>
-              <small>Generate your first document using the form above</small>
+      {/* History Tab */}
+      {activeTab === 'history' && (
+        <div className="history-section">
+          <div className="card">
+            <div className="card-header">
+              <h3>Recent Documents</h3>
+              <input
+                type="text"
+                placeholder="Filter by patient name..."
+                value={patientFilter}
+                onChange={(e) => setPatientFilter(e.target.value)}
+                className="filter-input"
+              />
             </div>
-          ) : (
-            <div className="recent-list">
-              {recentDocs.map(doc => (
-                <div key={doc.id} className="recent-item">
-                  <div className="recent-icon">📄</div>
-                  <div className="recent-content">
-                    <span className="recent-name">
-                      {doc.templateType} - {doc.patientName}
-                    </span>
-                    <span className="recent-meta">
-                      Generated {formatDate(doc.generatedAt)}
-                    </span>
-                  </div>
-                  <div className="recent-actions">
-                    <button 
-                      className="icon-btn" 
-                      title="Open Document"
-                      onClick={() => openDocument(doc.documentLink)}
-                    >
-                      📝
-                    </button>
-                    <button 
-                      className="icon-btn" 
-                      title="View PDF"
-                      onClick={() => openDocument(doc.pdfLink)}
-                    >
-                      📄
-                    </button>
-                  </div>
+            <div className="card-body">
+              {recentDocs.length === 0 ? (
+                <div className="empty-state">
+                  <p>No documents generated yet.</p>
+                  <small>Generated documents will appear here.</small>
                 </div>
-              ))}
+              ) : (
+                <div className="docs-table-wrapper">
+                  <table className="docs-table">
+                    <thead>
+                      <tr>
+                        <th>Document</th>
+                        <th>Patient</th>
+                        <th>Generated</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentDocs
+                        .filter(doc => 
+                          !patientFilter || 
+                          doc.patientName?.toLowerCase().includes(patientFilter.toLowerCase())
+                        )
+                        .map(doc => {
+                          const expired = isUrlExpired(doc.urlExpiresAt);
+                          return (
+                            <tr key={doc.id}>
+                              <td>
+                                <div className="doc-name">
+                                  <span className="doc-icon">📄</span>
+                                  {doc.templateName || doc.documentType}
+                                </div>
+                              </td>
+                              <td>{doc.patientName}</td>
+                              <td>
+                                <span className="date">
+                                  {doc.generatedAt?.toLocaleDateString()}
+                                </span>
+                                <span className="time">
+                                  {doc.generatedAt?.toLocaleTimeString([], { 
+                                    hour: '2-digit', 
+                                    minute: '2-digit' 
+                                  })}
+                                </span>
+                              </td>
+                              <td>
+                                <span className={`url-status ${expired ? 'expired' : 'active'}`}>
+                                  {expired ? '⚠️ Expired' : '✓ Active'}
+                                </span>
+                              </td>
+                              <td>
+                                {!expired ? (
+                                  <a 
+                                    href={doc.downloadUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn btn-sm btn-outline"
+                                  >
+                                    📥 Download
+                                  </a>
+                                ) : (
+                                  <button
+                                    className="btn btn-sm btn-outline"
+                                    onClick={() => {
+                                      setSelectedPatientId(doc.patientId);
+                                      setActiveTab('generate');
+                                      setGenerationStatus({
+                                        type: 'info',
+                                        message: `Regenerate ${doc.templateName || doc.documentType} for ${doc.patientName}`
+                                      });
+                                    }}
+                                  >
+                                    🔄 Regenerate
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
+      {/* Styles */}
       <style>{`
         .documents-page {
-          padding: 2rem;
-          max-width: 1400px;
+          padding: 1.5rem;
+          max-width: 1200px;
           margin: 0 auto;
+        }
+
+        .page-header {
+          margin-bottom: 1.5rem;
+        }
+
+        .page-header h2 {
+          margin: 0 0 0.25rem 0;
+          font-size: 1.5rem;
+          color: #1f2937;
+        }
+
+        .subtitle {
+          margin: 0;
+          color: #6b7280;
+          font-size: 0.875rem;
+        }
+
+        /* Tabs */
+        .tab-nav {
           display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
+          gap: 0.5rem;
+          margin-bottom: 1rem;
+          border-bottom: 1px solid #e5e7eb;
+          padding-bottom: 0.5rem;
         }
 
-        .page-loading {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          min-height: 400px;
+        .tab-btn {
+          padding: 0.5rem 1rem;
+          border: none;
+          background: none;
+          cursor: pointer;
+          font-size: 0.875rem;
+          color: #6b7280;
+          border-radius: 6px;
+          transition: all 0.15s;
         }
 
-        .spinner {
-          width: 40px;
-          height: 40px;
-          border: 3px solid #e5e7eb;
-          border-top-color: #2563eb;
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
+        .tab-btn:hover {
+          background: #f3f4f6;
         }
 
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .tab-btn.active {
+          background: #2563eb;
+          color: white;
+        }
 
         /* Cards */
-        .quick-generate-card,
-        .templates-card,
-        .recent-card {
+        .card {
           background: white;
           border: 1px solid #e5e7eb;
-          border-radius: 10px;
+          border-radius: 12px;
+          margin-bottom: 1rem;
           overflow: hidden;
         }
 
         .card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
           padding: 1rem 1.25rem;
           border-bottom: 1px solid #e5e7eb;
           background: #f9fafb;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
         }
 
         .card-header h3 {
           margin: 0;
           font-size: 1rem;
-          font-weight: 600;
           color: #1f2937;
-        }
-
-        .info-badge {
-          padding: 0.25rem 0.625rem;
-          background: #dbeafe;
-          color: #1e40af;
-          border-radius: 4px;
-          font-size: 0.75rem;
-          font-weight: 500;
         }
 
         .card-body {
           padding: 1.25rem;
         }
 
-        .section-description {
-          font-size: 0.875rem;
-          color: #6b7280;
-          margin: 0 0 1rem 0;
+        .badge {
+          font-size: 0.75rem;
+          padding: 0.25rem 0.5rem;
+          background: #e5e7eb;
+          border-radius: 4px;
+          color: #4b5563;
         }
 
-        /* Generate Form */
-        .generate-form {
-          display: flex;
-          align-items: flex-end;
-          gap: 1rem;
-          margin-bottom: 1rem;
-        }
-
-        .form-group {
-          flex: 1;
-        }
-
-        .form-group label {
-          display: block;
-          font-size: 0.875rem;
-          font-weight: 500;
-          color: #374151;
-          margin-bottom: 0.5rem;
-        }
-
-        .form-group select {
+        /* Patient Select */
+        .patient-select {
           width: 100%;
-          padding: 0.625rem 0.75rem;
+          padding: 0.75rem;
           border: 1px solid #d1d5db;
           border-radius: 8px;
           font-size: 0.875rem;
-          background: white;
+          margin-bottom: 1rem;
         }
 
-        .form-group select:focus {
+        .patient-select:focus {
           outline: none;
           border-color: #2563eb;
-          box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
-        .btn {
-          padding: 0.625rem 1.25rem;
+        /* Patient Summary */
+        .patient-summary-card {
+          background: #f0f9ff;
+          border: 1px solid #bae6fd;
           border-radius: 8px;
+          padding: 1rem;
+        }
+
+        .patient-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.75rem;
+        }
+
+        .patient-header h4 {
+          margin: 0;
+          color: #0369a1;
+        }
+
+        .status-badge {
+          padding: 0.25rem 0.5rem;
+          border-radius: 4px;
+          font-size: 0.75rem;
           font-weight: 500;
+        }
+
+        .status-badge.compliant { background: #dcfce7; color: #166534; }
+        .status-badge.due { background: #fef3c7; color: #92400e; }
+        .status-badge.overdue { background: #fee2e2; color: #991b1b; }
+
+        .patient-details {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 0.5rem;
+          margin-bottom: 1rem;
+        }
+
+        .detail-row {
+          display: flex;
+          gap: 0.5rem;
           font-size: 0.875rem;
-          cursor: pointer;
+        }
+
+        .detail-row .label {
+          color: #6b7280;
+        }
+
+        .detail-row .value {
+          color: #1f2937;
+          font-weight: 500;
+        }
+
+        .detail-row .value.urgent {
+          color: #dc2626;
+        }
+
+        .f2f-alert {
+          grid-column: span 2;
+          background: #fef3c7;
+          padding: 0.5rem;
+          border-radius: 4px;
+        }
+
+        .required-docs h5 {
+          margin: 0 0 0.5rem 0;
+          font-size: 0.8125rem;
+          color: #4b5563;
+        }
+
+        .required-docs ul {
+          margin: 0;
+          padding-left: 1.25rem;
+          font-size: 0.8125rem;
+          color: #1f2937;
+        }
+
+        .required-docs li {
+          margin-bottom: 0.25rem;
+        }
+
+        /* Status Banner */
+        .status-banner {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.75rem;
+          padding: 1rem;
+          border-radius: 8px;
+          margin-bottom: 1rem;
+        }
+
+        .status-banner.info { background: #eff6ff; border: 1px solid #bfdbfe; }
+        .status-banner.success { background: #f0fdf4; border: 1px solid #bbf7d0; }
+        .status-banner.warning { background: #fffbeb; border: 1px solid #fde68a; }
+        .status-banner.error { background: #fef2f2; border: 1px solid #fecaca; }
+
+        .status-icon {
+          font-size: 1.25rem;
+        }
+
+        .status-content {
+          flex: 1;
+        }
+
+        .status-message {
+          margin: 0 0 0.5rem 0;
+          font-weight: 500;
+        }
+
+        .status-actions {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+
+        .expires-note {
+          font-size: 0.75rem;
+          color: #6b7280;
+        }
+
+        .status-close {
+          background: none;
           border: none;
+          font-size: 1.25rem;
+          cursor: pointer;
+          color: #9ca3af;
+          padding: 0;
+          line-height: 1;
+        }
+
+        .results-list {
+          margin-top: 0.75rem;
+          font-size: 0.875rem;
+        }
+
+        .result-item {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.25rem 0;
+        }
+
+        .result-item.success { color: #166534; }
+        .result-item.error { color: #991b1b; }
+
+        .result-item a {
+          margin-left: auto;
+          color: #2563eb;
+          font-size: 0.75rem;
+        }
+
+        .error-msg {
+          margin-left: auto;
+          font-size: 0.75rem;
+          color: #dc2626;
+        }
+
+        /* Templates Grid */
+        .templates-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+          gap: 1rem;
+        }
+
+        .template-card {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.75rem;
+          padding: 1rem;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
           transition: all 0.15s;
+        }
+
+        .template-card:hover {
+          border-color: #2563eb;
+          box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
+        }
+
+        .template-card.not-applicable {
+          opacity: 0.5;
+        }
+
+        .template-icon {
+          font-size: 1.5rem;
+        }
+
+        .template-info {
+          flex: 1;
+        }
+
+        .template-info h4 {
+          margin: 0 0 0.25rem 0;
+          font-size: 0.875rem;
+          color: #1f2937;
+        }
+
+        .template-info p {
+          margin: 0 0 0.5rem 0;
+          font-size: 0.75rem;
+          color: #6b7280;
+        }
+
+        .template-periods {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.25rem;
+        }
+
+        .period-tag {
+          font-size: 0.625rem;
+          padding: 0.125rem 0.375rem;
+          background: #f3f4f6;
+          border-radius: 3px;
+          color: #4b5563;
+        }
+
+        /* History Table */
+        .filter-input {
+          padding: 0.5rem 0.75rem;
+          border: 1px solid #d1d5db;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          width: 200px;
+        }
+
+        .docs-table-wrapper {
+          overflow-x: auto;
+        }
+
+        .docs-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 0.875rem;
+        }
+
+        .docs-table th {
+          text-align: left;
+          padding: 0.75rem;
+          background: #f9fafb;
+          border-bottom: 1px solid #e5e7eb;
+          font-weight: 500;
+          color: #6b7280;
+        }
+
+        .docs-table td {
+          padding: 0.75rem;
+          border-bottom: 1px solid #e5e7eb;
+        }
+
+        .doc-name {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .doc-icon {
+          font-size: 1rem;
+        }
+
+        .docs-table .date {
+          display: block;
+          color: #1f2937;
+        }
+
+        .docs-table .time {
+          display: block;
+          font-size: 0.75rem;
+          color: #6b7280;
+        }
+
+        .url-status {
+          padding: 0.25rem 0.5rem;
+          border-radius: 4px;
+          font-size: 0.75rem;
+        }
+
+        .url-status.active {
+          background: #dcfce7;
+          color: #166534;
+        }
+
+        .url-status.expired {
+          background: #fef3c7;
+          color: #92400e;
+        }
+
+        /* Buttons */
+        .btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.375rem;
+          padding: 0.5rem 1rem;
+          border: none;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.15s;
+          text-decoration: none;
+        }
+
+        .btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
         }
 
         .btn-primary {
@@ -592,331 +1011,93 @@ const handleGenerateSingle = async (template) => {
           background: #1d4ed8;
         }
 
-        .btn-primary:disabled {
-          background: #94a3b8;
-          cursor: not-allowed;
-        }
-
-        .btn-secondary {
-          background: #64748b;
-          color: white;
-        }
-
-        .btn-secondary:hover:not(:disabled) {
-          background: #475569;
-        }
-
-        .btn-sm {
-          padding: 0.5rem 0.875rem;
-          font-size: 0.8125rem;
-        }
-
         .btn-outline {
           background: white;
-          border: 1px solid #e5e7eb;
+          border: 1px solid #d1d5db;
           color: #374151;
         }
 
         .btn-outline:hover:not(:disabled) {
-          background: #f9fafb;
           border-color: #2563eb;
           color: #2563eb;
         }
 
-        /* Status Message */
-        .status-message {
-          padding: 1rem;
-          border-radius: 8px;
-          margin-top: 1rem;
-        }
-
-        .status-message p {
-          margin: 0 0 0.5rem 0;
-          font-weight: 500;
-        }
-
-        .status-info {
-          background: #dbeafe;
-          border: 1px solid #93c5fd;
-          color: #1e40af;
-        }
-
-        .status-success {
-          background: #d1fae5;
-          border: 1px solid #86efac;
-          color: #065f46;
-        }
-
-        .status-error {
-          background: #fee2e2;
-          border: 1px solid #fca5a5;
-          color: #991b1b;
-        }
-
-        .status-links {
-          display: flex;
-          gap: 0.5rem;
-          margin-top: 0.75rem;
-        }
-
-        .generation-results {
-          margin-top: 1rem;
-          padding-top: 1rem;
-          border-top: 1px solid rgba(0,0,0,0.1);
-        }
-
-        .generation-results h4 {
-          margin: 0 0 0.5rem 0;
-          font-size: 0.875rem;
-        }
-
-        .generation-results ul {
-          margin: 0;
-          padding: 0;
-          list-style: none;
-        }
-
-        .generation-results li {
-          padding: 0.375rem 0;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          font-size: 0.875rem;
-        }
-
-        .link-btn {
-          background: none;
-          border: none;
-          color: #2563eb;
-          text-decoration: underline;
-          cursor: pointer;
-          font-size: 0.8125rem;
-          padding: 0 0.5rem;
-        }
-
-        /* Selected Patient Info */
-        .selected-patient-info {
-          background: #f9fafb;
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          padding: 1rem;
-          margin-top: 1rem;
-        }
-
-        .patient-summary {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 1rem;
-          margin-bottom: 1rem;
-          padding-bottom: 1rem;
-          border-bottom: 1px solid #e5e7eb;
-        }
-
-        .summary-item {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-        }
-
-        .summary-label {
-          font-size: 0.6875rem;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          color: #6b7280;
-        }
-
-        .summary-value {
-          font-size: 0.9375rem;
-          font-weight: 600;
-          color: #1f2937;
-        }
-
-        .summary-value.urgent {
-          color: #ef4444;
-        }
-
-        .required-docs h4 {
-          margin: 0 0 0.5rem 0;
-          font-size: 0.875rem;
-          color: #374151;
-        }
-
-        .required-docs ul {
-          margin: 0;
-          padding: 0;
-          list-style: none;
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.5rem;
-        }
-
-        .required-docs li {
-          display: flex;
-          align-items: center;
-          gap: 0.375rem;
+        .btn-sm {
           padding: 0.375rem 0.75rem;
-          background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 6px;
           font-size: 0.8125rem;
         }
 
-        .required-docs li.f2f-required {
-          background: #fef3c7;
-          border-color: #fde68a;
-          color: #92400e;
-        }
-
-        .doc-icon {
-          font-size: 0.875rem;
-        }
-
-        /* Templates Grid */
-        .templates-grid {
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-        }
-
-        .template-item {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          padding: 1rem;
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          transition: border-color 0.15s;
-        }
-
-        .template-item:hover {
-          border-color: #d1d5db;
-        }
-
-        .template-icon {
-          font-size: 1.5rem;
-          width: 40px;
-          text-align: center;
-        }
-
-        .template-content {
-          flex: 1;
-        }
-
-        .template-content h4 {
-          margin: 0 0 0.25rem 0;
-          font-size: 0.9375rem;
-          color: #1f2937;
-        }
-
-        .template-content p {
-          margin: 0 0 0.5rem 0;
-          font-size: 0.8125rem;
+        /* Help text */
+        .help-text {
           color: #6b7280;
+          font-size: 0.875rem;
+          margin: 0;
         }
 
-        .template-periods {
-          display: flex;
-          gap: 0.375rem;
-        }
-
-        .period-tag {
-          padding: 0.125rem 0.5rem;
-          background: #f3f4f6;
-          border-radius: 4px;
-          font-size: 0.6875rem;
-          color: #4b5563;
-        }
-
-        /* Recent Documents */
+        /* Empty state */
         .empty-state {
           text-align: center;
-          padding: 3rem 1rem;
+          padding: 2rem;
           color: #6b7280;
         }
 
         .empty-state small {
           display: block;
           margin-top: 0.5rem;
-          font-size: 0.8125rem;
         }
 
-        .recent-list {
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-        }
-
-        .recent-item {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          padding: 0.75rem 1rem;
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          transition: background 0.15s;
-        }
-
-        .recent-item:hover {
-          background: #f9fafb;
-        }
-
-        .recent-icon {
-          font-size: 1.25rem;
-        }
-
-        .recent-content {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-        }
-
-        .recent-name {
-          font-size: 0.875rem;
-          font-weight: 500;
-          color: #1f2937;
-        }
-
-        .recent-meta {
+        .empty-state code {
+          background: #f3f4f6;
+          padding: 0.125rem 0.375rem;
+          border-radius: 3px;
           font-size: 0.75rem;
+        }
+
+        /* Loading */
+        .page-loading, .page-error {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 300px;
           color: #6b7280;
         }
 
-        .recent-actions {
-          display: flex;
-          gap: 0.5rem;
+        .spinner {
+          width: 32px;
+          height: 32px;
+          border: 3px solid #e5e7eb;
+          border-top-color: #2563eb;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+          margin-bottom: 1rem;
         }
 
-        .icon-btn {
-          background: none;
-          border: 1px solid #e5e7eb;
-          padding: 0.5rem 0.75rem;
-          border-radius: 6px;
-          cursor: pointer;
-          font-size: 1rem;
-          transition: all 0.15s;
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
 
-        .icon-btn:hover {
-          background: #f9fafb;
-          border-color: #2563eb;
-        }
-
+        /* Responsive */
         @media (max-width: 768px) {
           .documents-page {
             padding: 1rem;
           }
 
-          .generate-form {
+          .patient-details {
+            grid-template-columns: 1fr;
+          }
+
+          .templates-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .card-header {
             flex-direction: column;
-            align-items: stretch;
+            align-items: flex-start;
+            gap: 0.75rem;
           }
 
-          .patient-summary {
-            grid-template-columns: repeat(2, 1fr);
-          }
-
-          .btn {
+          .filter-input {
             width: 100%;
           }
         }
