@@ -1,15 +1,14 @@
 /**
  * Scorecards.jsx - Dashboard Statistics Cards
- * 
- * PURPOSE:
- * Display key metrics at a glance with visual indicators
- * and click-through navigation to filtered views.
+ * Updated: Replaced emojis with Lucide React icons
  * 
  * PROPS:
  * - stats: Dashboard statistics object from getDashboardStats()
  * - onCardClick: Function to change the view filter
  * - activeView: Currently active filter (for highlighting)
  */
+
+import { SCORECARD_ICONS, ICON_SIZES } from '../constants/icons';
 
 const Scorecards = ({ stats, onCardClick, activeView }) => {
   // Handle missing stats gracefully
@@ -37,7 +36,7 @@ const Scorecards = ({ stats, onCardClick, activeView }) => {
         ? `${stats.byUrgency.critical} critical` 
         : 'All monitored',
       color: 'blue',
-      icon: '👥',
+      icon: SCORECARD_ICONS.activePatients,
     },
     {
       id: 'upcoming',
@@ -47,7 +46,7 @@ const Scorecards = ({ stats, onCardClick, activeView }) => {
         ? `${stats.overdueRecerts} overdue!` 
         : 'On track',
       color: stats.overdueRecerts > 0 ? 'red' : 'amber',
-      icon: '📋',
+      icon: SCORECARD_ICONS.certsDue,
     },
     {
       id: 'f2f',
@@ -59,7 +58,7 @@ const Scorecards = ({ stats, onCardClick, activeView }) => {
           ? 'Encounters needed' 
           : 'All complete',
       color: stats.f2fOverdue > 0 ? 'red' : stats.f2fRequired > 0 ? 'amber' : 'green',
-      icon: '👨‍⚕️',
+      icon: SCORECARD_ICONS.f2fRequired,
     },
     {
       id: '60day',
@@ -67,29 +66,34 @@ const Scorecards = ({ stats, onCardClick, activeView }) => {
       label: '60-Day Periods',
       trend: 'Requires F2F each period',
       color: 'purple',
-      icon: '🔄',
+      icon: SCORECARD_ICONS.sixtyDayPeriods,
     },
   ];
 
   return (
     <div className="scorecards-grid">
-      {cards.map(card => (
-        <button
-          key={card.id}
-          className={`scorecard ${card.color} ${activeView === card.id ? 'active' : ''}`}
-          onClick={() => onCardClick?.(card.id)}
-        >
-          <div className="scorecard-content">
-            <div className="scorecard-icon">{card.icon}</div>
-            <div className="scorecard-data">
-              <div className="scorecard-value">{card.value}</div>
-              <div className="scorecard-label">{card.label}</div>
-              <div className="scorecard-trend">{card.trend}</div>
+      {cards.map(card => {
+        const IconComponent = card.icon;
+        return (
+          <button
+            key={card.id}
+            className={`scorecard ${card.color} ${activeView === card.id ? 'active' : ''}`}
+            onClick={() => onCardClick?.(card.id)}
+          >
+            <div className="scorecard-content">
+              <div className={`scorecard-icon ${card.color}`}>
+                <IconComponent size={ICON_SIZES.lg} strokeWidth={1.5} />
+              </div>
+              <div className="scorecard-data">
+                <div className="scorecard-value">{card.value}</div>
+                <div className="scorecard-label">{card.label}</div>
+                <div className="scorecard-trend">{card.trend}</div>
+              </div>
             </div>
-          </div>
-          {activeView === card.id && <div className="active-indicator" />}
-        </button>
-      ))}
+            {activeView === card.id && <div className="active-indicator" />}
+          </button>
+        );
+      })}
       <style>{scorecardsStyles}</style>
     </div>
   );
@@ -118,11 +122,11 @@ const scorecardsStyles = `
   /* Base Scorecard */
   .scorecard {
     background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    padding: 1.25rem;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all var(--transition-normal);
     text-align: left;
     position: relative;
     overflow: hidden;
@@ -130,12 +134,12 @@ const scorecardsStyles = `
 
   .scorecard:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: var(--shadow-card-hover);
   }
 
   .scorecard.active {
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-100);
   }
 
   /* Active Indicator */
@@ -145,7 +149,7 @@ const scorecardsStyles = `
     top: 0;
     bottom: 0;
     width: 4px;
-    background: #2563eb;
+    background: var(--color-primary);
     border-radius: 4px 0 0 4px;
   }
 
@@ -153,13 +157,43 @@ const scorecardsStyles = `
   .scorecard-content {
     display: flex;
     align-items: flex-start;
-    gap: 0.75rem;
+    gap: 1rem;
   }
 
+  /* Icon Container */
   .scorecard-icon {
-    font-size: 1.5rem;
-    line-height: 1;
-    margin-top: 0.125rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    flex-shrink: 0;
+  }
+
+  .scorecard-icon.blue {
+    background: var(--scorecard-blue-bg);
+    color: var(--scorecard-blue-text);
+  }
+
+  .scorecard-icon.green {
+    background: var(--scorecard-green-bg);
+    color: var(--scorecard-green-text);
+  }
+
+  .scorecard-icon.amber {
+    background: var(--scorecard-amber-bg);
+    color: var(--scorecard-amber-text);
+  }
+
+  .scorecard-icon.red {
+    background: var(--scorecard-red-bg);
+    color: var(--scorecard-red-text);
+  }
+
+  .scorecard-icon.purple {
+    background: var(--scorecard-purple-bg);
+    color: var(--scorecard-purple-text);
   }
 
   .scorecard-data {
@@ -169,34 +203,36 @@ const scorecardsStyles = `
 
   /* Value Styles by Color */
   .scorecard-value {
-    font-size: 1.75rem;
-    font-weight: 700;
-    line-height: 1.1;
+    font-size: 1.875rem;
+    font-weight: var(--font-weight-bold, 700);
+    line-height: var(--line-height-tight, 1.1);
+    letter-spacing: -0.025em;
   }
 
-  .scorecard.blue .scorecard-value { color: #2563eb; }
-  .scorecard.green .scorecard-value { color: #10b981; }
-  .scorecard.amber .scorecard-value { color: #f59e0b; }
-  .scorecard.red .scorecard-value { color: #ef4444; }
-  .scorecard.purple .scorecard-value { color: #7c3aed; }
+  .scorecard.blue .scorecard-value { color: var(--scorecard-blue-text); }
+  .scorecard.green .scorecard-value { color: var(--scorecard-green-text); }
+  .scorecard.amber .scorecard-value { color: var(--scorecard-amber-text); }
+  .scorecard.red .scorecard-value { color: var(--scorecard-red-text); }
+  .scorecard.purple .scorecard-value { color: var(--scorecard-purple-text); }
 
   /* Label & Trend */
   .scorecard-label {
-    font-size: 0.8125rem;
-    font-weight: 500;
-    color: #374151;
-    margin-top: 0.25rem;
+    font-size: var(--font-size-sm, 0.875rem);
+    font-weight: var(--font-weight-medium, 500);
+    color: var(--color-gray-700, #374151);
+    margin-top: 0.375rem;
   }
 
   .scorecard-trend {
-    font-size: 0.6875rem;
-    color: #6b7280;
+    font-size: var(--font-size-xs, 0.75rem);
+    color: var(--color-gray-500, #6b7280);
     margin-top: 0.25rem;
   }
 
   /* Loading State */
   .scorecard.loading {
     cursor: default;
+    padding: 1.25rem;
   }
 
   .scorecard.loading:hover {
@@ -208,18 +244,18 @@ const scorecardsStyles = `
     background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
-    border-radius: 4px;
+    border-radius: 6px;
   }
 
   .scorecard-skeleton.value {
-    width: 60px;
-    height: 32px;
-    margin-bottom: 0.5rem;
+    width: 72px;
+    height: 36px;
+    margin-bottom: 0.625rem;
   }
 
   .scorecard-skeleton.label {
     width: 100px;
-    height: 16px;
+    height: 18px;
   }
 
   @keyframes shimmer {

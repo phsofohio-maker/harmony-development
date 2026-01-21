@@ -1,10 +1,11 @@
 /**
- * App.jsx - Main Application with Full Navigation
- * Phase 3: Added NotificationsPage
+ * App.jsx - Main Application with Theme Support
+ * Updated: Added ThemeProvider for organization branding
  */
 
 import { useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import LoginForm from './components/LoginForm';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
@@ -15,10 +16,16 @@ import DocumentsPage from './components/DocumentsPage';
 import SettingsPage from './components/SettingsPage';
 import NotificationsPage from './components/NotificationsPage';
 
+// Import theme CSS (add to your index.css or import here)
+import './styles/theme.css';
+
 function AppContent() {
   const { user, loading } = useAuth();
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Get orgId for ThemeProvider
+  const orgId = user?.customClaims?.orgId || 'org_parrish';
 
   if (loading) {
     return (
@@ -34,19 +41,22 @@ function AppContent() {
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #f9fafb;
+            background: var(--color-gray-50, #f9fafb);
           }
           .loading-content { text-align: center; }
           .spinner-large {
             width: 48px;
             height: 48px;
             margin: 0 auto 1rem;
-            border: 4px solid #e5e7eb;
-            border-top-color: #2563eb;
+            border: 4px solid var(--color-gray-200, #e5e7eb);
+            border-top-color: var(--color-primary, #2563eb);
             border-radius: 50%;
             animation: spin 1s linear infinite;
           }
-          .loading-content p { color: #6b7280; font-size: 0.875rem; }
+          .loading-content p { 
+            color: var(--color-gray-500, #6b7280); 
+            font-size: var(--font-size-sm, 0.875rem); 
+          }
           @keyframes spin { to { transform: rotate(360deg); } }
         `}</style>
       </div>
@@ -79,46 +89,52 @@ function AppContent() {
   };
 
   return (
-    <div className="app-layout">
-      <Sidebar 
-        currentPage={currentPage}
-        onNavigate={setCurrentPage}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-      />
-      <main className={`main-content ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-        {renderPage()}
-      </main>
+    <ThemeProvider orgId={orgId}>
+      <div className="app-layout">
+        <Sidebar 
+          currentPage={currentPage}
+          onNavigate={setCurrentPage}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        />
+        <main className={`main-content ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+          {renderPage()}
+        </main>
+      </div>
 
       <style>{`
         .app-layout {
-          display: flex;
           min-height: 100vh;
-          background: #f9fafb;
+          background: var(--color-gray-50, #f9fafb);
         }
+
         .main-content {
-          flex: 1;
-          margin-left: 240px;
-          transition: margin-left 0.3s ease;
-          min-height: 100vh;
+          margin-left: var(--sidebar-width, 240px);
+          padding: var(--spacing-lg, 1.5rem);
+          transition: margin-left var(--transition-slow, 0.3s ease);
         }
+
         .main-content.sidebar-collapsed {
-          margin-left: 64px;
+          margin-left: var(--sidebar-width-collapsed, 64px);
         }
+
         @media (max-width: 768px) {
           .main-content {
-            margin-left: 64px;
+            margin-left: 0;
+            padding: var(--spacing-md, 1rem);
           }
         }
       `}</style>
-    </div>
+    </ThemeProvider>
   );
 }
 
-export default function App() {
+function App() {
   return (
     <AuthProvider>
       <AppContent />
     </AuthProvider>
   );
 }
+
+export default App;

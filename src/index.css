@@ -15,3 +15,10 @@
   #root {
     min-height: 100vh;
   }
+  
+  :root {
+    --primary-color: #2563eb;
+    --primary-hover: #1d4ed8;
+    --primary-light: #dbeafe;
+    /* Auto-calculated variants */
+  }
