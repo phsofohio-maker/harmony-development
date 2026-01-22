@@ -1,3 +1,14 @@
+// Artifact ID: scorecards-updated
+// Branch: 3 (main) (019be6ea...)
+// Version: 4
+// Command: update
+// UUID: 9dbd1b83-d338-4f92-a62c-e14e89a8ed0c
+// Created: 1/21/2026, 4:35:10 PM
+// Change: "  /* Value Styles by Color */\n  .scorecard-value {..." → "  /* Value Styles by Color */\n  .scorecard-value {..."
+// Update Info: Successfully applied update
+
+// ---
+
 /**
  * Scorecards.jsx - Dashboard Statistics Cards
  * Updated: Replaced emojis with Lucide React icons

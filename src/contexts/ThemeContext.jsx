@@ -28,17 +28,64 @@ const DEFAULT_BRANDING = {
   organizationName: 'Harmony Health',
 };
 
-// Healthcare-appropriate color presets
+// Expanded color presets - organized by hue
 export const COLOR_PRESETS = [
-  { name: 'Blue', value: '#2563eb', sidebar: ['#1e3a5f', '#2c5282'] },
-  { name: 'Teal', value: '#0d9488', sidebar: ['#134e4a', '#115e59'] },
-  { name: 'Indigo', value: '#4f46e5', sidebar: ['#312e81', '#3730a3'] },
-  { name: 'Emerald', value: '#059669', sidebar: ['#064e3b', '#065f46'] },
-  { name: 'Cyan', value: '#0891b2', sidebar: ['#164e63', '#155e75'] },
-  { name: 'Purple', value: '#7c3aed', sidebar: ['#4c1d95', '#5b21b6'] },
-  { name: 'Rose', value: '#e11d48', sidebar: ['#881337', '#9f1239'] },
-  { name: 'Slate', value: '#475569', sidebar: ['#1e293b', '#334155'] },
+  // Blues
+  { name: 'Blue', value: '#2563eb' },
+  { name: 'Sky', value: '#0ea5e9' },
+  { name: 'Indigo', value: '#4f46e5' },
+  // Greens
+  { name: 'Emerald', value: '#059669' },
+  { name: 'Teal', value: '#0d9488' },
+  { name: 'Green', value: '#16a34a' },
+  // Warm
+  { name: 'Orange', value: '#ea580c' },
+  { name: 'Amber', value: '#d97706' },
+  { name: 'Rose', value: '#e11d48' },
+  // Cool
+  { name: 'Purple', value: '#7c3aed' },
+  { name: 'Violet', value: '#8b5cf6' },
+  { name: 'Fuchsia', value: '#c026d3' },
+  // Neutrals
+  { name: 'Slate', value: '#475569' },
+  { name: 'Gray', value: '#4b5563' },
+  { name: 'Zinc', value: '#52525b' },
+  { name: 'Stone', value: '#57534e' },
 ];
+
+/**
+ * Calculate relative luminance of a color
+ * Returns value between 0 (black) and 1 (white)
+ */
+function getLuminance(hex) {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  
+  const toLinear = (c) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  
+  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+}
+
+/**
+ * Determine if text should be light or dark based on background
+ */
+function shouldUseLightText(bgColor) {
+  return getLuminance(bgColor) < 0.5;
+}
+
+/**
+ * Generate sidebar colors from primary color
+ */
+function generateSidebarColors(primaryColor) {
+  const { h, s, l } = hexToHSL(primaryColor);
+  
+  // Create darker, more saturated versions for sidebar gradient
+  const sidebarStart = hslToHex(h, Math.min(s + 10, 100), Math.max(l - 35, 10));
+  const sidebarEnd = hslToHex(h, Math.min(s + 5, 100), Math.max(l - 25, 15));
+  
+  return [sidebarStart, sidebarEnd];
+}
 
 /**
  * Converts hex color to HSL components
@@ -109,9 +156,11 @@ function applyThemeToDocument(branding) {
   const root = document.documentElement;
   const colors = generateColorVariants(branding.primaryColor);
   
-  // Find matching preset for sidebar colors, or use default
-  const preset = COLOR_PRESETS.find(p => p.value === branding.primaryColor);
-  const sidebarColors = preset?.sidebar || ['#1e3a5f', '#2c5282'];
+  // Generate sidebar colors from primary
+  const sidebarColors = generateSidebarColors(branding.primaryColor);
+  
+  // Determine text colors based on sidebar background luminance
+  const useLightText = shouldUseLightText(sidebarColors[0]);
 
   // Primary colors
   root.style.setProperty('--color-primary', colors.primary);
@@ -123,13 +172,28 @@ function applyThemeToDocument(branding) {
   root.style.setProperty('--color-primary-200', colors.primary200);
   root.style.setProperty('--color-primary-500', colors.primary500);
   root.style.setProperty('--color-primary-600', colors.primary600);
-  root.style.setProperty('--color-primary-700', colors.primary700);
-  root.style.setProperty('--color-primary-800', colors.primary800);
-  root.style.setProperty('--color-primary-900', colors.primary900);
+  root.style.setProperty('--color-primary-700', colors.primaryHover);
+  root.style.setProperty('--color-primary-800', colors.primaryDark);
+  root.style.setProperty('--color-primary-900', colors.primaryDark);
 
   // Sidebar gradient
   root.style.setProperty('--sidebar-bg-start', sidebarColors[0]);
   root.style.setProperty('--sidebar-bg-end', sidebarColors[1]);
+  
+  // Auto-contrast sidebar text colors
+  if (useLightText) {
+    root.style.setProperty('--sidebar-text', 'rgba(255, 255, 255, 0.95)');
+    root.style.setProperty('--sidebar-text-muted', 'rgba(255, 255, 255, 0.7)');
+    root.style.setProperty('--sidebar-hover', 'rgba(255, 255, 255, 0.1)');
+    root.style.setProperty('--sidebar-active', 'rgba(255, 255, 255, 0.15)');
+    root.style.setProperty('--sidebar-border', 'rgba(255, 255, 255, 0.1)');
+  } else {
+    root.style.setProperty('--sidebar-text', 'rgba(0, 0, 0, 0.9)');
+    root.style.setProperty('--sidebar-text-muted', 'rgba(0, 0, 0, 0.6)');
+    root.style.setProperty('--sidebar-hover', 'rgba(0, 0, 0, 0.08)');
+    root.style.setProperty('--sidebar-active', 'rgba(0, 0, 0, 0.12)');
+    root.style.setProperty('--sidebar-border', 'rgba(0, 0, 0, 0.1)');
+  }
 
   // Update scorecard blue to match primary
   root.style.setProperty('--scorecard-blue-bg', colors.primary50);

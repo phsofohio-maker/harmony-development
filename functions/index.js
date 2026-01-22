@@ -17,7 +17,13 @@ const { weeklySummary } = require('./weeklySummary');
 
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { emailUser, emailPass } = require('./firebase');
+// Invitation system
+const { sendInvite } = require('./sendInvite');
+const { acceptInvite } = require('./acceptInvite');
+const { resendInvite, cancelInvite, createInvite } = require('./manageInvites');
 
+// Patient import/export
+const { exportPatients, importPatients } = require('./patientImportExport');
 /**
  * Manually trigger certification check (for testing)
  * Note: Since this is just a test trigger, I kept it here. 
@@ -35,14 +41,32 @@ const triggerCertificationCheck = onCall({
   
   return { success: true, message: 'Certification check triggered' };
 });
-
+// Export all functions
 module.exports = {
-  testEmail,
-  generateDocument,
-  dailyCertificationCheck,
-  weeklySummary,
-  triggerCertificationCheck,
+  // User management
   setUserClaims,
   updateUserClaims,
-  refreshUserClaims
+  refreshUserClaims,
+  
+  // Scheduled
+  dailyCertificationCheck,
+  weeklySummary,
+  
+  // Documents
+  generateDocument,
+  
+  // Invitations
+  sendInvite,
+  acceptInvite,
+  resendInvite,
+  cancelInvite,
+  createInvite,
+  
+  // Patient data
+  exportPatients,
+  importPatients,
+
+  //Other
+  testEmail,
+  triggerCertificationCheck,
 };

@@ -214,7 +214,7 @@ export default function LoginForm() {
           margin: 1rem;
           padding: 2rem;
           background: white;
-          border-radius: 12px;
+          border-radius: var(--radius-xl);
           box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
 
@@ -228,21 +228,21 @@ export default function LoginForm() {
           height: 60px;
           margin: 0 auto 1rem;
           padding: 12px;
-          background: linear-gradient(135deg, #2563eb, #3b82f6);
-          border-radius: 12px;
+          background: linear-gradient(135deg, var(--color-primary), var(--color-primary-500));
+          border-radius: var(--radius-xl);
           color: white;
         }
 
         .login-header h1 {
           margin: 0;
           font-size: 1.75rem;
-          color: #1f2937;
+          color: var(--color-gray-800);
         }
 
         .login-header p {
           margin: 0.25rem 0 0;
-          color: #6b7280;
-          font-size: 0.875rem;
+          color: var(--color-gray-500);
+          font-size: var(--font-size-sm);
         }
 
         .login-form {
@@ -258,40 +258,42 @@ export default function LoginForm() {
         }
 
         .form-group label {
-          font-size: 0.875rem;
+          font-size: var(--font-size-sm);
           font-weight: 500;
-          color: #374151;
+          color: var(--color-gray-700);
         }
 
         .form-group input {
           padding: 0.75rem;
-          border: 1px solid #d1d5db;
-          border-radius: 8px;
-          font-size: 1rem;
+          border: 1px solid var(--color-gray-300);
+          border-radius: var(--radius-lg);
+          font-size: var(--font-size-base);
           transition: border-color 0.15s, box-shadow 0.15s;
         }
 
         .form-group input:focus {
           outline: none;
-          border-color: #2563eb;
+          border-color: var(--color-primary);
           box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
         .form-group input:disabled {
-          background: #f3f4f6;
+          background: var(--color-gray-100);
           cursor: not-allowed;
         }
+
+
 
         .btn-primary {
           display: flex;
           align-items: center;
           justify-content: center;
           padding: 0.75rem;
-          background: #2563eb;
+          background: var(--color-primary);
           color: white;
           border: none;
-          border-radius: 8px;
-          font-size: 1rem;
+          border-radius: var(--radius-lg);
+          font-size: var(--font-size-base);
           font-weight: 500;
           cursor: pointer;
           transition: background 0.15s;
@@ -299,7 +301,7 @@ export default function LoginForm() {
         }
 
         .btn-primary:hover:not(:disabled) {
-          background: #1d4ed8;
+          background: var(--color-primary-hover);
         }
 
         .btn-primary:disabled {
@@ -310,8 +312,8 @@ export default function LoginForm() {
         .btn-link {
           background: none;
           border: none;
-          color: #2563eb;
-          font-size: 0.875rem;
+          color: var(--color-primary);
+          font-size: var(--font-size-sm);
           cursor: pointer;
           padding: 0.5rem;
         }
@@ -325,11 +327,11 @@ export default function LoginForm() {
           align-items: center;
           gap: 0.5rem;
           padding: 0.75rem;
-          background: #fef2f2;
+          background: var(--color-error-light);
           border: 1px solid #fecaca;
-          border-radius: 8px;
+          border-radius: var(--radius-lg);
           color: #dc2626;
-          font-size: 0.875rem;
+          font-size: var(--font-size-sm);
         }
 
         .error-message svg {
@@ -347,12 +349,12 @@ export default function LoginForm() {
           width: 48px;
           height: 48px;
           margin: 0 auto 1rem;
-          color: #10b981;
+          color: var(--color-success);
         }
 
         .reset-instructions {
-          color: #6b7280;
-          font-size: 0.875rem;
+          color: var(--color-gray-500);
+          font-size: var(--font-size-sm);
           margin-bottom: 0.5rem;
         }
 
@@ -376,8 +378,8 @@ export default function LoginForm() {
 
         .login-footer p {
           margin: 0;
-          font-size: 0.75rem;
-          color: #9ca3af;
+          font-size: var(--font-size-xs);
+          color: var(--color-gray-400);
         }
       `}</style>
     </div>

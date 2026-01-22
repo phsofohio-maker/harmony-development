@@ -141,10 +141,10 @@ const HUVPage = () => {
   // Get status badge component
   const StatusBadge = ({ status }) => {
     const config = {
-      complete: { bg: '#d1fae5', color: '#065f46', label: 'Complete' },
-      'action-needed': { bg: '#fef3c7', color: '#92400e', label: 'Action Needed' },
-      overdue: { bg: '#fee2e2', color: '#991b1b', label: 'Overdue' },
-      upcoming: { bg: '#f3f4f6', color: '#6b7280', label: 'Upcoming' },
+      complete: { bg: 'var(--color-success-light)', color: 'var(--color-success-dark)', label: 'Complete' },
+      'action-needed': { bg: 'var(--color-warning-light)', color: 'var(--color-warning-dark)', label: 'Action Needed' },
+      overdue: { bg: 'var(--color-error-light)', color: 'var(--color-error-dark)', label: 'Overdue' },
+      upcoming: { bg: 'var(--color-gray-100)', color: 'var(--color-gray-500)', label: 'Upcoming' },
     };
     const { bg, color, label } = config[status] || config.upcoming;
     
@@ -153,8 +153,8 @@ const HUVPage = () => {
         background: bg, 
         color: color, 
         padding: '0.25rem 0.5rem', 
-        borderRadius: '4px',
-        fontSize: '0.75rem',
+        borderRadius: 'var(--radius-sm)',
+        fontSize: 'var(--font-size-xs)',
         fontWeight: 500
       }}>
         {label}
@@ -178,13 +178,13 @@ const HUVPage = () => {
           .spinner {
             width: 40px;
             height: 40px;
-            border: 3px solid #e5e7eb;
-            border-top-color: #2563eb;
+            border: 3px solid var(--color-gray-200);
+            border-top-color: var(--color-primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
           }
           @keyframes spin { to { transform: rotate(360deg); } }
-          .huv-loading p { color: #6b7280; margin-top: 1rem; }
+          .huv-loading p { color: var(--color-gray-500); margin-top: 1rem; }
         `}</style>
       </div>
     );
@@ -396,16 +396,16 @@ const HUVPage = () => {
           align-items: center;
           justify-content: space-between;
           padding: 1rem;
-          background: #fee2e2;
-          border: 1px solid #ef4444;
-          border-radius: 8px;
-          color: #991b1b;
+          background: var(--color-error-light);
+          border: 1px solid var(--color-error);
+          border-radius: var(--radius-lg);
+          color: var(--color-error-dark);
         }
         .error-banner button {
           padding: 0.5rem 1rem;
           background: white;
-          border: 1px solid #ef4444;
-          border-radius: 6px;
+          border: 1px solid var(--color-error);
+          border-radius: var(--radius-md);
           cursor: pointer;
         }
 
@@ -418,26 +418,26 @@ const HUVPage = () => {
 
         .stat-card {
           padding: 1rem;
-          border-radius: 8px;
+          border-radius: var(--radius-lg);
           border: 1px solid;
         }
 
         .stat-card.amber {
-          background: #fef3c7;
+          background: var(--color-warning-light);
           border-color: #fde68a;
-          color: #92400e;
+          color: var(--color-warning-dark);
         }
 
         .stat-card.red {
-          background: #fee2e2;
+          background: var(--color-error-light);
           border-color: #fecaca;
-          color: #991b1b;
+          color: var(--color-error-dark);
         }
 
         .stat-card.green {
-          background: #d1fae5;
+          background: var(--color-success-light);
           border-color: #a7f3d0;
-          color: #065f46;
+          color: var(--color-success-dark);
         }
 
         .stat-value {
@@ -446,7 +446,7 @@ const HUVPage = () => {
         }
 
         .stat-label {
-          font-size: 0.75rem;
+          font-size: var(--font-size-xs);
           margin-top: 0.25rem;
         }
 
@@ -457,21 +457,21 @@ const HUVPage = () => {
           gap: 1.5rem;
           padding: 1rem;
           background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          font-size: 0.875rem;
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-lg);
+          font-size: var(--font-size-sm);
         }
 
         .legend-title {
           font-weight: 600;
-          color: #374151;
+          color: var(--color-gray-700);
         }
 
         .legend-item {
           display: flex;
           align-items: center;
           gap: 0.375rem;
-          color: #6b7280;
+          color: var(--color-gray-500);
         }
 
         .dot {
@@ -480,10 +480,10 @@ const HUVPage = () => {
           border-radius: 50%;
         }
 
-        .dot.green { background: #10b981; }
-        .dot.amber { background: #f59e0b; }
-        .dot.red { background: #ef4444; }
-        .dot.gray { background: #9ca3af; }
+        .dot.green { background: var(--color-success); }
+        .dot.amber { background: var(--color-warning); }
+        .dot.red { background: var(--color-error); }
+        .dot.gray { background: var(--color-gray-400); }
 
         /* Filters Row */
         .filters-row {
@@ -497,49 +497,49 @@ const HUVPage = () => {
         .filter-toggles {
           display: flex;
           gap: 0.25rem;
-          background: #f3f4f6;
+          background: var(--color-gray-100);
           padding: 0.25rem;
-          border-radius: 8px;
+          border-radius: var(--radius-lg);
         }
 
         .filter-btn {
           padding: 0.5rem 1rem;
           border: none;
           background: transparent;
-          border-radius: 6px;
+          border-radius: var(--radius-md);
           font-size: 0.8125rem;
-          color: #6b7280;
+          color: var(--color-gray-500);
           cursor: pointer;
           transition: all 0.15s;
         }
 
         .filter-btn:hover {
-          color: #1f2937;
+          color: var(--color-gray-800);
         }
 
         .filter-btn.active {
           background: white;
-          color: #2563eb;
+          color: var(--color-primary);
           box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
 
         .results-count {
-          font-size: 0.875rem;
-          color: #6b7280;
+          font-size: var(--font-size-sm);
+          color: var(--color-gray-500);
         }
 
         /* HUV Table */
         .huv-table-container {
           background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 10px;
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-xl);
           overflow: hidden;
         }
 
         .empty-state {
           padding: 3rem;
           text-align: center;
-          color: #6b7280;
+          color: var(--color-gray-500);
         }
         .empty-state span {
           font-size: 2.5rem;
@@ -559,38 +559,38 @@ const HUVPage = () => {
           font-weight: 600;
           text-transform: uppercase;
           letter-spacing: 0.5px;
-          color: #6b7280;
-          background: #f9fafb;
-          border-bottom: 2px solid #e5e7eb;
+          color: var(--color-gray-500);
+          background: var(--color-gray-50);
+          border-bottom: 2px solid var(--border-color);
         }
 
         .huv-table td {
           padding: 0.875rem 1rem;
-          border-bottom: 1px solid #f3f4f6;
-          font-size: 0.875rem;
+          border-bottom: 1px solid var(--color-gray-100);
+          font-size: var(--font-size-sm);
         }
 
         .huv-table tr:hover {
-          background: #f9fafb;
+          background: var(--color-gray-50);
         }
 
         .patient-name {
           font-weight: 500;
-          color: #1f2937;
+          color: var(--color-gray-800);
         }
 
         .soc-date {
-          color: #6b7280;
+          color: var(--color-gray-500);
         }
 
         .window-cell {
           font-size: 0.8125rem;
-          color: #6b7280;
+          color: var(--color-gray-500);
         }
 
         .completed-date {
           font-size: 0.6875rem;
-          color: #065f46;
+          color: var(--color-success-dark);
           margin-top: 0.25rem;
         }
 
@@ -602,22 +602,22 @@ const HUVPage = () => {
 
         .action-btn {
           padding: 0.375rem 0.75rem;
-          background: #2563eb;
+          background: var(--color-primary);
           color: white;
           border: none;
-          border-radius: 4px;
-          font-size: 0.75rem;
+          border-radius: var(--radius-sm);
+          font-size: var(--font-size-xs);
           cursor: pointer;
           transition: background 0.15s;
         }
 
         .action-btn:hover {
-          background: #1d4ed8;
+          background: var(--color-primary-hover);
         }
 
         .all-complete {
-          color: #065f46;
-          font-size: 0.75rem;
+          color: var(--color-success-dark);
+          font-size: var(--font-size-xs);
           font-weight: 500;
         }
 
@@ -635,7 +635,7 @@ const HUVPage = () => {
 
         .modal-content {
           background: white;
-          border-radius: 12px;
+          border-radius: var(--radius-xl);
           width: 100%;
           max-width: 400px;
           overflow: hidden;
@@ -646,7 +646,7 @@ const HUVPage = () => {
           align-items: center;
           justify-content: space-between;
           padding: 1rem 1.25rem;
-          border-bottom: 1px solid #e5e7eb;
+          border-bottom: 1px solid var(--border-color);
         }
 
         .modal-header h3 {
@@ -658,7 +658,7 @@ const HUVPage = () => {
           background: none;
           border: none;
           font-size: 1.5rem;
-          color: #6b7280;
+          color: var(--color-gray-500);
           cursor: pointer;
           line-height: 1;
         }
@@ -669,7 +669,7 @@ const HUVPage = () => {
 
         .patient-info, .huv-info {
           margin: 0 0 0.75rem 0;
-          font-size: 0.875rem;
+          font-size: var(--font-size-sm);
         }
 
         .form-group {
@@ -678,23 +678,23 @@ const HUVPage = () => {
 
         .form-group label {
           display: block;
-          font-size: 0.875rem;
+          font-size: var(--font-size-sm);
           font-weight: 500;
           margin-bottom: 0.375rem;
-          color: #374151;
+          color: var(--color-gray-700);
         }
 
         .form-group input {
           width: 100%;
           padding: 0.5rem 0.75rem;
-          border: 1px solid #d1d5db;
-          border-radius: 6px;
-          font-size: 0.875rem;
+          border: 1px solid var(--color-gray-300);
+          border-radius: var(--radius-md);
+          font-size: var(--font-size-sm);
         }
 
         .form-group input:focus {
           outline: none;
-          border-color: #2563eb;
+          border-color: var(--color-primary);
           box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
         }
 
@@ -703,25 +703,25 @@ const HUVPage = () => {
           justify-content: flex-end;
           gap: 0.75rem;
           padding: 1rem 1.25rem;
-          background: #f9fafb;
-          border-top: 1px solid #e5e7eb;
+          background: var(--color-gray-50);
+          border-top: 1px solid var(--border-color);
         }
 
         .btn {
           padding: 0.5rem 1rem;
-          border-radius: 6px;
-          font-size: 0.875rem;
+          border-radius: var(--radius-md);
+          font-size: var(--font-size-sm);
           cursor: pointer;
           border: none;
         }
 
         .btn-primary {
-          background: #2563eb;
+          background: var(--color-primary);
           color: white;
         }
 
         .btn-primary:hover {
-          background: #1d4ed8;
+          background: var(--color-primary-hover);
         }
 
         .btn-primary:disabled {
@@ -730,13 +730,13 @@ const HUVPage = () => {
         }
 
         .btn-secondary {
-          background: #f3f4f6;
-          color: #374151;
-          border: 1px solid #e5e7eb;
+          background: var(--color-gray-100);
+          color: var(--color-gray-700);
+          border: 1px solid var(--border-color);
         }
 
         .btn-secondary:hover {
-          background: #e5e7eb;
+          background: var(--color-gray-200);
         }
 
         /* Responsive */

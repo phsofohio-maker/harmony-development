@@ -1,3 +1,14 @@
+// Artifact ID: sidebar-updated
+// Branch: 3 (main) (019be6ea...)
+// Version: 7
+// Command: update
+// UUID: e9fcd8e5-9b6d-4c89-b596-8436417fd896
+// Created: 1/21/2026, 4:34:48 PM
+// Change: "        .logo-icon .pulse-icon {\n          positio..." → "        .logo-icon .pulse-icon {\n          positio..."
+// Update Info: Successfully applied update
+
+// ---
+
 /**
  * Sidebar.jsx - Collapsible Navigation Sidebar
  * Updated: Replaced emojis with Lucide React icons
@@ -29,9 +40,8 @@ const Sidebar = ({ currentPage, onNavigate, collapsed, onToggleCollapse }) => {
         <div className="logo">
           <div className="logo-icon">
             <BRAND_ICONS.heart size={24} className="heart-icon" />
-            <BRAND_ICONS.activity size={16} className="pulse-icon" />
           </div>
-          {!collapsed && <span className="logo-text">Harmony</span>}
+          {!collapsed && <span className="logo-text">Harmony Health Care Assistant</span>}
         </div>
         <button className="collapse-btn" onClick={onToggleCollapse} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
           <CollapseIcon size={16} />
@@ -113,7 +123,7 @@ const Sidebar = ({ currentPage, onNavigate, collapsed, onToggleCollapse }) => {
         .logo {
           display: flex;
           align-items: center;
-          gap: 0.625rem;
+          padding: 10px;
         }
 
         .logo-icon {
@@ -126,16 +136,16 @@ const Sidebar = ({ currentPage, onNavigate, collapsed, onToggleCollapse }) => {
         }
 
         .logo-icon .heart-icon {
-          color: #f472b6;
-          fill: #f472b6;
+          color: #ffffff;
+          fill: #ffffff;
         }
 
         .logo-icon .pulse-icon {
           position: absolute;
           bottom: -2px;
           right: -4px;
-          color: #34d399;
-          background: var(--sidebar-bg-start);
+          color: ##ffffff;
+          background: transparent;
           border-radius: 2px;
         }
 
@@ -143,6 +153,7 @@ const Sidebar = ({ currentPage, onNavigate, collapsed, onToggleCollapse }) => {
           font-size: 1.25rem;
           font-weight: 600;
           letter-spacing: -0.025em;
+          padding: 5px;
         }
 
         .collapse-btn {

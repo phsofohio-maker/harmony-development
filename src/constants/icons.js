@@ -131,7 +131,7 @@ export const BRAND_ICONS = {
   activity: Activity,
 };
 
-// Default icon size classes (for Tailwind or custom CSS)
+// Default icon sizes
 export const ICON_SIZES = {
   xs: 14,
   sm: 16,
@@ -140,22 +140,9 @@ export const ICON_SIZES = {
   xl: 32,
 };
 
-// Helper component for consistent icon rendering
-export const Icon = ({ 
-  icon: IconComponent, 
-  size = 'md', 
-  className = '',
-  ...props 
-}) => {
-  const sizeValue = typeof size === 'number' ? size : ICON_SIZES[size] || ICON_SIZES.md;
-  
-  return (
-    <IconComponent 
-      size={sizeValue} 
-      className={className}
-      {...props} 
-    />
-  );
+// Helper function to get size value
+export const getIconSize = (size) => {
+  return typeof size === 'number' ? size : ICON_SIZES[size] || ICON_SIZES.md;
 };
 
 export default {
@@ -167,5 +154,5 @@ export default {
   TREND_ICONS,
   BRAND_ICONS,
   ICON_SIZES,
-  Icon,
+  getIconSize,
 };

@@ -1,8 +1,7 @@
 /**
  * DocumentsPage.jsx - Document Generation UI
  * Updated for Stateless PDF Generation (No Google Drive dependency)
- * 
- * Changes from previous version:
+ * * Changes from previous version:
  * - Calls 'generateDocument' instead of 'generateCertificationDocs'
  * - Fetches templates from Firestore instead of hardcoded array
  * - Shows URL expiration status
@@ -605,13 +604,13 @@ const DocumentsPage = () => {
         .page-header h2 {
           margin: 0 0 0.25rem 0;
           font-size: 1.5rem;
-          color: #1f2937;
+          color: var(--color-gray-800);
         }
 
         .subtitle {
           margin: 0;
-          color: #6b7280;
-          font-size: 0.875rem;
+          color: var(--color-gray-500);
+          font-size: var(--font-size-sm);
         }
 
         /* Tabs */
@@ -619,7 +618,7 @@ const DocumentsPage = () => {
           display: flex;
           gap: 0.5rem;
           margin-bottom: 1rem;
-          border-bottom: 1px solid #e5e7eb;
+          border-bottom: 1px solid var(--border-color);
           padding-bottom: 0.5rem;
         }
 
@@ -628,26 +627,26 @@ const DocumentsPage = () => {
           border: none;
           background: none;
           cursor: pointer;
-          font-size: 0.875rem;
-          color: #6b7280;
-          border-radius: 6px;
-          transition: all 0.15s;
+          font-size: var(--font-size-sm);
+          color: var(--color-gray-500);
+          border-radius: var(--radius-md);
+          transition: all var(--transition-normal);
         }
 
         .tab-btn:hover {
-          background: #f3f4f6;
+          background: var(--color-gray-100);
         }
 
         .tab-btn.active {
-          background: #2563eb;
+          background: var(--color-primary);
           color: white;
         }
 
         /* Cards */
         .card {
           background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 12px;
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-xl);
           margin-bottom: 1rem;
           overflow: hidden;
         }
@@ -657,14 +656,14 @@ const DocumentsPage = () => {
           justify-content: space-between;
           align-items: center;
           padding: 1rem 1.25rem;
-          border-bottom: 1px solid #e5e7eb;
-          background: #f9fafb;
+          border-bottom: 1px solid var(--border-color);
+          background: var(--color-gray-50);
         }
 
         .card-header h3 {
           margin: 0;
-          font-size: 1rem;
-          color: #1f2937;
+          font-size: var(--font-size-base);
+          color: var(--color-gray-800);
         }
 
         .card-body {
@@ -672,34 +671,34 @@ const DocumentsPage = () => {
         }
 
         .badge {
-          font-size: 0.75rem;
+          font-size: var(--font-size-xs);
           padding: 0.25rem 0.5rem;
-          background: #e5e7eb;
-          border-radius: 4px;
-          color: #4b5563;
+          background: var(--color-gray-200);
+          border-radius: var(--radius-sm);
+          color: var(--color-gray-600);
         }
 
         /* Patient Select */
         .patient-select {
           width: 100%;
           padding: 0.75rem;
-          border: 1px solid #d1d5db;
-          border-radius: 8px;
-          font-size: 0.875rem;
+          border: 1px solid var(--color-gray-300);
+          border-radius: var(--radius-lg);
+          font-size: var(--font-size-sm);
           margin-bottom: 1rem;
         }
 
         .patient-select:focus {
           outline: none;
-          border-color: #2563eb;
+          border-color: var(--color-primary);
           box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
         /* Patient Summary */
         .patient-summary-card {
-          background: #f0f9ff;
-          border: 1px solid #bae6fd;
-          border-radius: 8px;
+          background: var(--color-primary-50); /* #f0f9ff is close to primary-50 */
+          border: 1px solid var(--color-primary-light); /* #bae6fd is close to primary-light */
+          border-radius: var(--radius-lg);
           padding: 1rem;
         }
 
@@ -712,19 +711,19 @@ const DocumentsPage = () => {
 
         .patient-header h4 {
           margin: 0;
-          color: #0369a1;
+          color: #0369a1; /* Keep original unless there's a primary-darker variant in map? Guide says primary-dark is 1e40af. This is slightly different, leaving as is for exact safety or switching to var(--color-primary-dark) if desired. I will keep exact non-mapped values. */
         }
 
         .status-badge {
           padding: 0.25rem 0.5rem;
-          border-radius: 4px;
-          font-size: 0.75rem;
+          border-radius: var(--radius-sm);
+          font-size: var(--font-size-xs);
           font-weight: 500;
         }
 
-        .status-badge.compliant { background: #dcfce7; color: #166534; }
-        .status-badge.due { background: #fef3c7; color: #92400e; }
-        .status-badge.overdue { background: #fee2e2; color: #991b1b; }
+        .status-badge.compliant { background: var(--color-success-light); color: var(--color-success-dark); }
+        .status-badge.due { background: var(--color-warning-light); color: var(--color-warning-dark); }
+        .status-badge.overdue { background: var(--color-error-light); color: var(--color-error-dark); }
 
         .patient-details {
           display: grid;
@@ -736,40 +735,40 @@ const DocumentsPage = () => {
         .detail-row {
           display: flex;
           gap: 0.5rem;
-          font-size: 0.875rem;
+          font-size: var(--font-size-sm);
         }
 
         .detail-row .label {
-          color: #6b7280;
+          color: var(--color-gray-500);
         }
 
         .detail-row .value {
-          color: #1f2937;
+          color: var(--color-gray-800);
           font-weight: 500;
         }
 
         .detail-row .value.urgent {
-          color: #dc2626;
+          color: #dc2626; /* Not in migration guide */
         }
 
         .f2f-alert {
           grid-column: span 2;
-          background: #fef3c7;
+          background: var(--color-warning-light);
           padding: 0.5rem;
-          border-radius: 4px;
+          border-radius: var(--radius-sm);
         }
 
         .required-docs h5 {
           margin: 0 0 0.5rem 0;
           font-size: 0.8125rem;
-          color: #4b5563;
+          color: var(--color-gray-600);
         }
 
         .required-docs ul {
           margin: 0;
           padding-left: 1.25rem;
           font-size: 0.8125rem;
-          color: #1f2937;
+          color: var(--color-gray-800);
         }
 
         .required-docs li {
@@ -782,17 +781,17 @@ const DocumentsPage = () => {
           align-items: flex-start;
           gap: 0.75rem;
           padding: 1rem;
-          border-radius: 8px;
+          border-radius: var(--radius-lg);
           margin-bottom: 1rem;
         }
 
-        .status-banner.info { background: #eff6ff; border: 1px solid #bfdbfe; }
-        .status-banner.success { background: #f0fdf4; border: 1px solid #bbf7d0; }
+        .status-banner.info { background: var(--color-primary-50); border: 1px solid var(--color-primary-light); }
+        .status-banner.success { background: var(--color-success-light); border: 1px solid #bbf7d0; } /* border not in map */
         .status-banner.warning { background: #fffbeb; border: 1px solid #fde68a; }
-        .status-banner.error { background: #fef2f2; border: 1px solid #fecaca; }
+        .status-banner.error { background: var(--color-error-light); border: 1px solid #fecaca; }
 
         .status-icon {
-          font-size: 1.25rem;
+          font-size: var(--font-size-xl);
         }
 
         .status-content {
@@ -811,23 +810,23 @@ const DocumentsPage = () => {
         }
 
         .expires-note {
-          font-size: 0.75rem;
-          color: #6b7280;
+          font-size: var(--font-size-xs);
+          color: var(--color-gray-500);
         }
 
         .status-close {
           background: none;
           border: none;
-          font-size: 1.25rem;
+          font-size: var(--font-size-xl);
           cursor: pointer;
-          color: #9ca3af;
+          color: var(--color-gray-400);
           padding: 0;
           line-height: 1;
         }
 
         .results-list {
           margin-top: 0.75rem;
-          font-size: 0.875rem;
+          font-size: var(--font-size-sm);
         }
 
         .result-item {
@@ -837,18 +836,18 @@ const DocumentsPage = () => {
           padding: 0.25rem 0;
         }
 
-        .result-item.success { color: #166534; }
-        .result-item.error { color: #991b1b; }
+        .result-item.success { color: var(--color-success-dark); }
+        .result-item.error { color: var(--color-error-dark); }
 
         .result-item a {
           margin-left: auto;
-          color: #2563eb;
-          font-size: 0.75rem;
+          color: var(--color-primary);
+          font-size: var(--font-size-xs);
         }
 
         .error-msg {
           margin-left: auto;
-          font-size: 0.75rem;
+          font-size: var(--font-size-xs);
           color: #dc2626;
         }
 
@@ -864,13 +863,13 @@ const DocumentsPage = () => {
           align-items: flex-start;
           gap: 0.75rem;
           padding: 1rem;
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          transition: all 0.15s;
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-lg);
+          transition: all var(--transition-normal);
         }
 
         .template-card:hover {
-          border-color: #2563eb;
+          border-color: var(--color-primary);
           box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
         }
 
@@ -888,14 +887,14 @@ const DocumentsPage = () => {
 
         .template-info h4 {
           margin: 0 0 0.25rem 0;
-          font-size: 0.875rem;
-          color: #1f2937;
+          font-size: var(--font-size-sm);
+          color: var(--color-gray-800);
         }
 
         .template-info p {
           margin: 0 0 0.5rem 0;
-          font-size: 0.75rem;
-          color: #6b7280;
+          font-size: var(--font-size-xs);
+          color: var(--color-gray-500);
         }
 
         .template-periods {
@@ -907,17 +906,17 @@ const DocumentsPage = () => {
         .period-tag {
           font-size: 0.625rem;
           padding: 0.125rem 0.375rem;
-          background: #f3f4f6;
+          background: var(--color-gray-100);
           border-radius: 3px;
-          color: #4b5563;
+          color: var(--color-gray-600);
         }
 
         /* History Table */
         .filter-input {
           padding: 0.5rem 0.75rem;
-          border: 1px solid #d1d5db;
-          border-radius: 6px;
-          font-size: 0.875rem;
+          border: 1px solid var(--color-gray-300);
+          border-radius: var(--radius-md);
+          font-size: var(--font-size-sm);
           width: 200px;
         }
 
@@ -928,21 +927,21 @@ const DocumentsPage = () => {
         .docs-table {
           width: 100%;
           border-collapse: collapse;
-          font-size: 0.875rem;
+          font-size: var(--font-size-sm);
         }
 
         .docs-table th {
           text-align: left;
           padding: 0.75rem;
-          background: #f9fafb;
-          border-bottom: 1px solid #e5e7eb;
+          background: var(--color-gray-50);
+          border-bottom: 1px solid var(--border-color);
           font-weight: 500;
-          color: #6b7280;
+          color: var(--color-gray-500);
         }
 
         .docs-table td {
           padding: 0.75rem;
-          border-bottom: 1px solid #e5e7eb;
+          border-bottom: 1px solid var(--border-color);
         }
 
         .doc-name {
@@ -952,34 +951,34 @@ const DocumentsPage = () => {
         }
 
         .doc-icon {
-          font-size: 1rem;
+          font-size: var(--font-size-base);
         }
 
         .docs-table .date {
           display: block;
-          color: #1f2937;
+          color: var(--color-gray-800);
         }
 
         .docs-table .time {
           display: block;
-          font-size: 0.75rem;
-          color: #6b7280;
+          font-size: var(--font-size-xs);
+          color: var(--color-gray-500);
         }
 
         .url-status {
           padding: 0.25rem 0.5rem;
-          border-radius: 4px;
-          font-size: 0.75rem;
+          border-radius: var(--radius-sm);
+          font-size: var(--font-size-xs);
         }
 
         .url-status.active {
-          background: #dcfce7;
-          color: #166534;
+          background: var(--color-success-light);
+          color: var(--color-success-dark);
         }
 
         .url-status.expired {
-          background: #fef3c7;
-          color: #92400e;
+          background: var(--color-warning-light);
+          color: var(--color-warning-dark);
         }
 
         /* Buttons */
@@ -989,11 +988,11 @@ const DocumentsPage = () => {
           gap: 0.375rem;
           padding: 0.5rem 1rem;
           border: none;
-          border-radius: 6px;
-          font-size: 0.875rem;
+          border-radius: var(--radius-md);
+          font-size: var(--font-size-sm);
           font-weight: 500;
           cursor: pointer;
-          transition: all 0.15s;
+          transition: all var(--transition-normal);
           text-decoration: none;
         }
 
@@ -1003,23 +1002,23 @@ const DocumentsPage = () => {
         }
 
         .btn-primary {
-          background: #2563eb;
+          background: var(--color-primary);
           color: white;
         }
 
         .btn-primary:hover:not(:disabled) {
-          background: #1d4ed8;
+          background: var(--color-primary-hover);
         }
 
         .btn-outline {
           background: white;
-          border: 1px solid #d1d5db;
-          color: #374151;
+          border: 1px solid var(--color-gray-300);
+          color: var(--color-gray-700);
         }
 
         .btn-outline:hover:not(:disabled) {
-          border-color: #2563eb;
-          color: #2563eb;
+          border-color: var(--color-primary);
+          color: var(--color-primary);
         }
 
         .btn-sm {
@@ -1029,8 +1028,8 @@ const DocumentsPage = () => {
 
         /* Help text */
         .help-text {
-          color: #6b7280;
-          font-size: 0.875rem;
+          color: var(--color-gray-500);
+          font-size: var(--font-size-sm);
           margin: 0;
         }
 
@@ -1038,7 +1037,7 @@ const DocumentsPage = () => {
         .empty-state {
           text-align: center;
           padding: 2rem;
-          color: #6b7280;
+          color: var(--color-gray-500);
         }
 
         .empty-state small {
@@ -1047,10 +1046,10 @@ const DocumentsPage = () => {
         }
 
         .empty-state code {
-          background: #f3f4f6;
+          background: var(--color-gray-100);
           padding: 0.125rem 0.375rem;
           border-radius: 3px;
-          font-size: 0.75rem;
+          font-size: var(--font-size-xs);
         }
 
         /* Loading */
@@ -1060,14 +1059,14 @@ const DocumentsPage = () => {
           align-items: center;
           justify-content: center;
           min-height: 300px;
-          color: #6b7280;
+          color: var(--color-gray-500);
         }
 
         .spinner {
           width: 32px;
           height: 32px;
-          border: 3px solid #e5e7eb;
-          border-top-color: #2563eb;
+          border: 3px solid var(--border-color);
+          border-top-color: var(--color-primary);
           border-radius: 50%;
           animation: spin 0.8s linear infinite;
           margin-bottom: 1rem;

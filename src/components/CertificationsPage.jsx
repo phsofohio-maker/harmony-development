@@ -190,13 +190,13 @@ const CertificationsPage = () => {
           .spinner {
             width: 40px;
             height: 40px;
-            border: 3px solid #e5e7eb;
-            border-top-color: #2563eb;
+            border: 3px solid var(--color-gray-200);
+            border-top-color: var(--color-primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
           }
           @keyframes spin { to { transform: rotate(360deg); } }
-          .page-loading p { color: #6b7280; margin-top: 1rem; }
+          .page-loading p { color: var(--color-gray-500); margin-top: 1rem; }
         `}</style>
       </div>
     );
@@ -426,17 +426,17 @@ const CertificationsPage = () => {
 
         .stat-card {
           padding: 1rem;
-          border-radius: 8px;
+          border-radius: var(--radius-lg);
           border: 1px solid;
         }
 
-        .stat-card.amber { background: #fef3c7; border-color: #fde68a; color: #92400e; }
-        .stat-card.red { background: #fee2e2; border-color: #fecaca; color: #991b1b; }
-        .stat-card.blue { background: #dbeafe; border-color: #bfdbfe; color: #1e40af; }
+        .stat-card.amber { background: var(--color-warning-light); border-color: #fde68a; color: var(--color-warning-dark); }
+        .stat-card.red { background: var(--color-error-light); border-color: #fecaca; color: var(--color-error-dark); }
+        .stat-card.blue { background: var(--color-primary-light); border-color: #bfdbfe; color: var(--color-primary-dark); }
         .stat-card.purple { background: #f3e8ff; border-color: #e9d5ff; color: #6b21a8; }
 
         .stat-value { font-size: 1.5rem; font-weight: 700; }
-        .stat-label { font-size: 0.75rem; margin-top: 0.25rem; }
+        .stat-label { font-size: var(--font-size-xs); margin-top: 0.25rem; }
 
         /* Legend */
         .legend-card {
@@ -445,23 +445,23 @@ const CertificationsPage = () => {
           gap: 1.5rem;
           padding: 0.75rem 1rem;
           background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-lg);
           font-size: 0.8125rem;
         }
 
-        .legend-title { font-weight: 600; color: #374151; }
-        .legend-item { display: flex; align-items: center; gap: 0.375rem; color: #6b7280; }
+        .legend-title { font-weight: 600; color: var(--color-gray-700); }
+        .legend-item { display: flex; align-items: center; gap: 0.375rem; color: var(--color-gray-500); }
 
         .dot {
           width: 10px;
           height: 10px;
           border-radius: 50%;
         }
-        .dot.red { background: #ef4444; }
-        .dot.amber { background: #f59e0b; }
-        .dot.blue { background: #3b82f6; }
-        .dot.gray { background: #9ca3af; }
+        .dot.red { background: var(--color-error); }
+        .dot.amber { background: var(--color-warning); }
+        .dot.blue { background: var(--color-primary-500); }
+        .dot.gray { background: var(--color-gray-400); }
 
         /* Filters */
         .filters-row {
@@ -480,15 +480,15 @@ const CertificationsPage = () => {
 
         .filter-select {
           padding: 0.5rem 0.75rem;
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          font-size: 0.875rem;
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-lg);
+          font-size: var(--font-size-sm);
           background: white;
         }
 
         .results-count {
-          font-size: 0.875rem;
-          color: #6b7280;
+          font-size: var(--font-size-sm);
+          color: var(--color-gray-500);
         }
 
         /* Error */
@@ -497,24 +497,24 @@ const CertificationsPage = () => {
           align-items: center;
           justify-content: space-between;
           padding: 1rem;
-          background: #fee2e2;
-          border: 1px solid #ef4444;
-          border-radius: 8px;
-          color: #991b1b;
+          background: var(--color-error-light);
+          border: 1px solid var(--color-error);
+          border-radius: var(--radius-lg);
+          color: var(--color-error-dark);
         }
 
         /* Table */
         .table-container {
           background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 10px;
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-xl);
           overflow: hidden;
         }
 
         .empty-state {
           padding: 3rem;
           text-align: center;
-          color: #6b7280;
+          color: var(--color-gray-500);
         }
         .empty-state span { font-size: 2.5rem; display: block; margin-bottom: 0.5rem; }
 
@@ -530,23 +530,23 @@ const CertificationsPage = () => {
           font-weight: 600;
           text-transform: uppercase;
           letter-spacing: 0.5px;
-          color: #6b7280;
-          background: #f9fafb;
-          border-bottom: 2px solid #e5e7eb;
+          color: var(--color-gray-500);
+          background: var(--color-gray-50);
+          border-bottom: 2px solid var(--border-color);
         }
 
         .cert-table td {
           padding: 0.75rem 1rem;
-          border-bottom: 1px solid #f3f4f6;
-          font-size: 0.875rem;
+          border-bottom: 1px solid var(--color-gray-100);
+          font-size: var(--font-size-sm);
           vertical-align: middle;
         }
 
-        .cert-table tr:hover { background: #f9fafb; }
+        .cert-table tr:hover { background: var(--color-gray-50); }
 
-        .status-row-overdue { border-left: 3px solid #ef4444; }
-        .status-row-critical { border-left: 3px solid #ef4444; }
-        .status-row-action { border-left: 3px solid #f59e0b; }
+        .status-row-overdue { border-left: 3px solid var(--color-error); }
+        .status-row-critical { border-left: 3px solid var(--color-error); }
+        .status-row-action { border-left: 3px solid var(--color-warning); }
 
         .patient-cell {
           display: flex;
@@ -557,7 +557,7 @@ const CertificationsPage = () => {
         .patient-link {
           background: none;
           border: none;
-          color: #2563eb;
+          color: var(--color-primary);
           font-weight: 500;
           cursor: pointer;
           text-align: left;
@@ -569,17 +569,17 @@ const CertificationsPage = () => {
           padding: 0.125rem 0.375rem;
           background: #e0e7ff;
           color: #3730a3;
-          border-radius: 4px;
+          border-radius: var(--radius-sm);
         }
 
         .period-badge {
           display: inline-block;
           padding: 0.25rem 0.5rem;
-          border-radius: 4px;
-          font-size: 0.75rem;
+          border-radius: var(--radius-sm);
+          font-size: var(--font-size-xs);
           font-weight: 500;
         }
-        .period-badge.blue { background: #dbeafe; color: #1e40af; }
+        .period-badge.blue { background: var(--color-primary-light); color: var(--color-primary-dark); }
         .period-badge.purple { background: #f3e8ff; color: #6b21a8; }
 
         .date-cell { white-space: nowrap; }
@@ -587,52 +587,52 @@ const CertificationsPage = () => {
         .status-badge {
           display: inline-block;
           padding: 0.25rem 0.5rem;
-          border-radius: 4px;
-          font-size: 0.75rem;
+          border-radius: var(--radius-sm);
+          font-size: var(--font-size-xs);
           font-weight: 500;
           white-space: nowrap;
         }
-        .status-badge.overdue { background: #fee2e2; color: #991b1b; }
-        .status-badge.critical { background: #fee2e2; color: #991b1b; }
-        .status-badge.action { background: #fef3c7; color: #92400e; }
-        .status-badge.upcoming { background: #dbeafe; color: #1e40af; }
-        .status-badge.normal { background: #f3f4f6; color: #6b7280; }
+        .status-badge.overdue { background: var(--color-error-light); color: var(--color-error-dark); }
+        .status-badge.critical { background: var(--color-error-light); color: var(--color-error-dark); }
+        .status-badge.action { background: var(--color-warning-light); color: var(--color-warning-dark); }
+        .status-badge.upcoming { background: var(--color-primary-light); color: var(--color-primary-dark); }
+        .status-badge.normal { background: var(--color-gray-100); color: var(--color-gray-500); }
 
         .f2f-badge {
           display: inline-block;
           padding: 0.25rem 0.5rem;
-          border-radius: 4px;
+          border-radius: var(--radius-sm);
           font-size: 0.6875rem;
           font-weight: 500;
         }
-        .f2f-badge.complete { background: #d1fae5; color: #065f46; }
-        .f2f-badge.required { background: #fef3c7; color: #92400e; }
-        .f2f-badge.na { background: #f3f4f6; color: #9ca3af; }
+        .f2f-badge.complete { background: var(--color-success-light); color: var(--color-success-dark); }
+        .f2f-badge.required { background: var(--color-warning-light); color: var(--color-warning-dark); }
+        .f2f-badge.na { background: var(--color-gray-100); color: var(--color-gray-400); }
 
         .btn {
           padding: 0.375rem 0.75rem;
-          border-radius: 6px;
+          border-radius: var(--radius-md);
           font-size: 0.8125rem;
           cursor: pointer;
           border: none;
           font-weight: 500;
         }
-        .btn-primary { background: #2563eb; color: white; }
-        .btn-primary:hover { background: #1d4ed8; }
-        .btn-sm { padding: 0.375rem 0.75rem; font-size: 0.75rem; }
+        .btn-primary { background: var(--color-primary); color: white; }
+        .btn-primary:hover { background: var(--color-primary-hover); }
+        .btn-sm { padding: 0.375rem 0.75rem; font-size: var(--font-size-xs); }
 
         /* Documents Info */
         .docs-info-card {
           background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 10px;
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-xl);
           padding: 1.25rem;
         }
 
         .docs-info-card h4 {
           margin: 0 0 1rem 0;
           font-size: 0.9375rem;
-          color: #1f2937;
+          color: var(--color-gray-800);
         }
 
         .docs-grid {
@@ -644,7 +644,7 @@ const CertificationsPage = () => {
         .doc-period strong {
           display: block;
           font-size: 0.8125rem;
-          color: #374151;
+          color: var(--color-gray-700);
           margin-bottom: 0.5rem;
         }
 
@@ -652,7 +652,7 @@ const CertificationsPage = () => {
           margin: 0;
           padding-left: 1.25rem;
           font-size: 0.8125rem;
-          color: #6b7280;
+          color: var(--color-gray-500);
         }
 
         .doc-period li {

@@ -482,13 +482,13 @@ const NotificationsPage = () => {
         .page-header h1 {
           margin: 0 0 0.5rem 0;
           font-size: 2rem;
-          color: #1f2937;
+          color: var(--color-gray-800);
         }
 
         .page-header p {
           margin: 0;
-          color: #6b7280;
-          font-size: 0.9375rem;
+          color: var(--color-gray-500);
+          font-size: var(--font-size-sm);
         }
 
         .notifications-grid {
@@ -506,15 +506,15 @@ const NotificationsPage = () => {
 
         .panel {
           background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 10px;
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-xl);
           padding: 1.5rem;
         }
 
         .panel h2 {
           margin: 0 0 1.5rem 0;
-          font-size: 1.125rem;
-          color: #1f2937;
+          font-size: var(--font-size-lg);
+          color: var(--color-gray-800);
         }
 
         /* Recipients Panel */
@@ -530,15 +530,15 @@ const NotificationsPage = () => {
           align-items: center;
           justify-content: space-between;
           padding: 0.75rem 1rem;
-          background: #f9fafb;
-          border: 1px solid #e5e7eb;
-          border-radius: 6px;
+          background: var(--color-gray-50);
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-md);
         }
 
         .remove-btn {
           background: none;
           border: none;
-          color: #ef4444;
+          color: var(--color-error);
           font-size: 1.5rem;
           cursor: pointer;
           padding: 0;
@@ -550,7 +550,7 @@ const NotificationsPage = () => {
         }
 
         .remove-btn:hover {
-          color: #dc2626;
+          color: #dc2626; /* Not in migration guide, keeping as is */
         }
 
         .add-email {
@@ -562,67 +562,67 @@ const NotificationsPage = () => {
         .add-email input {
           flex: 1;
           padding: 0.625rem 0.875rem;
-          border: 1px solid #e5e7eb;
-          border-radius: 6px;
-          font-size: 0.875rem;
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-md);
+          font-size: var(--font-size-sm);
         }
 
         .add-email button {
           padding: 0.625rem 1.25rem;
-          background: #2563eb;
+          background: var(--color-primary);
           color: white;
           border: none;
-          border-radius: 6px;
+          border-radius: var(--radius-md);
           font-weight: 500;
           cursor: pointer;
         }
 
         .add-email button:disabled {
-          background: #94a3b8;
+          background: #94a3b8; /* Not in migration guide */
           cursor: not-allowed;
         }
 
         .test-section {
           margin-top: 1rem;
           padding-top: 1rem;
-          border-top: 1px solid #e5e7eb;
+          border-top: 1px solid var(--border-color);
         }
 
         .test-btn {
           width: 100%;
           padding: 0.75rem;
-          background: #8b5cf6;
+          background: #8b5cf6; /* Not in migration guide */
           color: white;
           border: none;
-          border-radius: 6px;
+          border-radius: var(--radius-md);
           font-weight: 500;
           cursor: pointer;
         }
 
         .test-btn:hover:not(:disabled) {
-          background: #7c3aed;
+          background: #7c3aed; /* Not in migration guide */
         }
 
         .test-btn:disabled {
-          background: #94a3b8;
+          background: #94a3b8; /* Not in migration guide */
           cursor: not-allowed;
         }
 
         .test-result {
           margin-top: 0.75rem;
           padding: 0.75rem;
-          border-radius: 6px;
-          font-size: 0.875rem;
+          border-radius: var(--radius-md);
+          font-size: var(--font-size-sm);
         }
 
         .test-result.success {
-          background: #d1fae5;
-          color: #065f46;
+          background: var(--color-success-light);
+          color: var(--color-success-dark);
         }
 
         .test-result.error {
-          background: #fee2e2;
-          color: #991b1b;
+          background: var(--color-error-light);
+          color: var(--color-error-dark);
         }
 
         /* Toggle Settings */
@@ -638,8 +638,8 @@ const NotificationsPage = () => {
           align-items: center;
           justify-content: space-between;
           padding: 1rem;
-          background: #f9fafb;
-          border-radius: 6px;
+          background: var(--color-gray-50);
+          border-radius: var(--radius-md);
         }
 
         .toggle-info {
@@ -654,14 +654,14 @@ const NotificationsPage = () => {
 
         .toggle-info strong {
           display: block;
-          font-size: 0.875rem;
-          color: #1f2937;
+          font-size: var(--font-size-sm);
+          color: var(--color-gray-800);
         }
 
         .toggle-info small {
           display: block;
-          font-size: 0.75rem;
-          color: #6b7280;
+          font-size: var(--font-size-xs);
+          color: var(--color-gray-500);
         }
 
         /* Toggle Switch */
@@ -685,8 +685,8 @@ const NotificationsPage = () => {
           left: 0;
           right: 0;
           bottom: 0;
-          background-color: #cbd5e1;
-          transition: 0.3s;
+          background-color: #cbd5e1; /* Not in migration guide */
+          transition: 0.3s; /* var(--transition-slow) */
           border-radius: 24px;
         }
 
@@ -698,12 +698,12 @@ const NotificationsPage = () => {
           left: 3px;
           bottom: 3px;
           background-color: white;
-          transition: 0.3s;
+          transition: 0.3s; /* var(--transition-slow) */
           border-radius: 50%;
         }
 
         input:checked + .slider {
-          background-color: #2563eb;
+          background-color: var(--color-primary);
         }
 
         input:checked + .slider:before {
@@ -713,8 +713,8 @@ const NotificationsPage = () => {
         /* Lead Days Setting */
         .lead-days-setting {
           padding: 1rem;
-          background: #f9fafb;
-          border-radius: 6px;
+          background: var(--color-gray-50);
+          border-radius: var(--radius-md);
         }
 
         .lead-days-setting label {
@@ -724,22 +724,22 @@ const NotificationsPage = () => {
 
         .lead-days-setting strong {
           display: block;
-          font-size: 0.875rem;
-          color: #1f2937;
+          font-size: var(--font-size-sm);
+          color: var(--color-gray-800);
         }
 
         .lead-days-setting small {
           display: block;
-          font-size: 0.75rem;
-          color: #6b7280;
+          font-size: var(--font-size-xs);
+          color: var(--color-gray-500);
         }
 
         .lead-days-setting input {
           width: 100%;
           padding: 0.625rem;
-          border: 1px solid #e5e7eb;
-          border-radius: 6px;
-          font-size: 0.875rem;
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-md);
+          font-size: var(--font-size-sm);
           margin-top: 0.5rem;
         }
 
@@ -756,12 +756,12 @@ const NotificationsPage = () => {
           align-items: center;
           gap: 0.75rem;
           padding: 0.75rem;
-          background: #f9fafb;
-          border-radius: 6px;
+          background: var(--color-gray-50);
+          border-radius: var(--radius-md);
         }
 
         .schedule-icon {
-          font-size: 1.25rem;
+          font-size: var(--font-size-xl);
         }
 
         .schedule-info {
@@ -770,41 +770,41 @@ const NotificationsPage = () => {
 
         .schedule-info strong {
           display: block;
-          font-size: 0.875rem;
+          font-size: var(--font-size-sm);
         }
 
         .schedule-info span {
-          font-size: 0.75rem;
-          color: #6b7280;
+          font-size: var(--font-size-xs);
+          color: var(--color-gray-500);
         }
 
         .schedule-status {
           padding: 0.25rem 0.5rem;
-          border-radius: 4px;
+          border-radius: var(--radius-sm);
           font-size: 0.7rem;
           font-weight: 500;
         }
 
         .schedule-status.active {
-          background: #d1fae5;
-          color: #065f46;
+          background: var(--color-success-light);
+          color: var(--color-success-dark);
         }
 
         .schedule-status.inactive {
-          background: #f3f4f6;
-          color: #6b7280;
+          background: var(--color-gray-100);
+          color: var(--color-gray-500);
         }
 
         /* Functions Status */
         .functions-status {
           margin-top: 1.5rem;
           padding-top: 1rem;
-          border-top: 1px solid #e5e7eb;
+          border-top: 1px solid var(--border-color);
         }
 
         .functions-status h3 {
           font-size: 0.8rem;
-          color: #6b7280;
+          color: var(--color-gray-500);
           margin: 0 0 0.75rem;
           text-transform: uppercase;
           letter-spacing: 0.05em;
@@ -826,14 +826,14 @@ const NotificationsPage = () => {
         }
 
         .status-dot.active {
-          background: #10b981;
+          background: var(--color-success);
         }
 
         /* History Table */
         .empty-state, .empty-history {
           text-align: center;
           padding: 3rem 1rem;
-          color: #6b7280;
+          color: var(--color-gray-500);
         }
 
         .empty-state span, .empty-history span {
@@ -860,18 +860,18 @@ const NotificationsPage = () => {
         .history-table th {
           text-align: left;
           padding: 0.75rem;
-          background: #f9fafb;
-          font-size: 0.75rem;
+          background: var(--color-gray-50);
+          font-size: var(--font-size-xs);
           font-weight: 600;
-          color: #6b7280;
+          color: var(--color-gray-500);
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
 
         .history-table td {
           padding: 0.75rem;
-          border-bottom: 1px solid #e5e7eb;
-          font-size: 0.875rem;
+          border-bottom: 1px solid var(--border-color);
+          font-size: var(--font-size-sm);
         }
 
         .type-cell {
@@ -882,31 +882,31 @@ const NotificationsPage = () => {
 
         .type-badge {
           padding: 0.25rem 0.5rem;
-          background: #f3f4f6;
-          border-radius: 4px;
+          background: var(--color-gray-100);
+          border-radius: var(--radius-sm);
           font-size: 0.7rem;
         }
 
         .status-badge {
           padding: 0.25rem 0.5rem;
-          border-radius: 4px;
+          border-radius: var(--radius-sm);
           font-size: 0.7rem;
           font-weight: 500;
         }
 
         .status-badge.status-sent {
-          background: #d1fae5;
-          color: #065f46;
+          background: var(--color-success-light);
+          color: var(--color-success-dark);
         }
 
         .status-badge.status-failed {
-          background: #fee2e2;
-          color: #991b1b;
+          background: var(--color-error-light);
+          color: var(--color-error-dark);
         }
 
         .status-badge.status-pending {
-          background: #fef3c7;
-          color: #92400e;
+          background: var(--color-warning-light);
+          color: var(--color-warning-dark);
         }
       `}</style>
     </div>

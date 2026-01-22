@@ -3,7 +3,7 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     
-    // Organization document storage
+    // Organization document storage (patient documents, PDFs)
     match /organizations/{orgId}/documents/{patientId}/{fileName} {
       // Read: authenticated users in same org
       allow read: if request.auth != null 
@@ -13,11 +13,18 @@ service firebase.storage {
       allow write: if false;
     }
     
-    // Template assets (logos, headers) - read-only for org members
+    // Organization assets (logos, branding images)
     match /organizations/{orgId}/assets/{assetName} {
+      // Read: authenticated users in same org
       allow read: if request.auth != null 
                   && request.auth.token.orgId == orgId;
-      allow write: if false;
+      
+      // Write: owners and admins in same org, with safety limits
+      allow write: if request.auth != null 
+                   && request.auth.token.orgId == orgId
+                   && (request.auth.token.role == 'owner' || request.auth.token.role == 'admin')
+                   && request.resource.size < 500 * 1024
+                   && request.resource.contentType.matches('image/.*');
     }
     
     // Deny everything else
