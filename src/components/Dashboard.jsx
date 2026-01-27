@@ -19,6 +19,9 @@ import { getPatients, getDashboardStats, addPatient, updatePatient, deletePatien
 import Scorecards from './Scorecards';
 import PatientTable from './PatientTable';
 import PatientModal from './PatientModal';
+import { 
+  AlertTriangle, Check, Clock, Calendar, Mail, Search, ChevronRight 
+} from 'lucide-react';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -202,13 +205,13 @@ const Dashboard = () => {
         {/* Urgent Attention Panel */}
         <div className="dashboard-card">
           <div className="card-header">
-            <h3>🚨 Urgent Attention Required</h3>
+            <h3><><AlertTriangle size={18} className="text-red" /> Urgent Attention Required</></h3>
             <span className="card-subtitle">Today</span>
           </div>
           <div className="card-body">
             {urgentPatients.length === 0 ? (
               <div className="empty-state">
-                <span>✅</span>
+                <Check size={24} className="text-green" />
                 <p>No urgent items. Great job!</p>
               </div>
             ) : (
@@ -220,7 +223,7 @@ const Dashboard = () => {
                     onClick={() => openEditModal(p)}
                   >
                     <span className={`urgent-icon ${p.compliance?.cti?.isOverdue ? 'overdue' : 'warning'}`}>
-                      {p.compliance?.cti?.isOverdue ? '⚠️' : '⏰'}
+                      {p.compliance?.cti?.isOverdue ? <AlertTriangle size={16} /> : <Clock size={16} />}
                     </span>
                     <div className="urgent-content">
                       <strong>{p.name}</strong>
@@ -231,7 +234,7 @@ const Dashboard = () => {
                         }
                       </span>
                     </div>
-                    <span className="urgent-arrow">→</span>
+                    <ChevronRight size={16} className="urgent-arrow" />
                   </li>
                 ))}
               </ul>
@@ -242,13 +245,13 @@ const Dashboard = () => {
         {/* Upcoming This Week Panel */}
         <div className="dashboard-card">
           <div className="card-header">
-            <h3>📅 Upcoming This Week</h3>
+            <h3><><Calendar size={18} /> Upcoming This Week</></h3>
             <button className="link-btn" onClick={() => setView('upcoming')}>View All</button>
           </div>
           <div className="card-body">
             {upcomingPatients.length === 0 ? (
               <div className="empty-state">
-                <span>📭</span>
+                <Mail size={24} />
                 <p>No upcoming certifications this week.</p>
               </div>
             ) : (
@@ -305,7 +308,7 @@ const Dashboard = () => {
 
             {/* Search */}
             <div className="search-box">
-              <span className="search-icon">🔍</span>
+              <Search size={16} className="search-icon" />
               <input
                 type="text"
                 placeholder="Search patients..."
@@ -571,7 +574,7 @@ const Dashboard = () => {
           left: 0.75rem;
           top: 50%;
           transform: translateY(-50%);
-          font-size: 0.875rem;
+          color: #9ca3af;
         }
         .search-box input {
           padding: 0.5rem 0.75rem 0.5rem 2rem;
@@ -628,6 +631,9 @@ const Dashboard = () => {
         .badge-90day { background: #dbeafe; color: #1e40af; }
         .badge-60day { background: #f3e8ff; color: #6b21a8; }
         .badge-readmit { background: #e0e7ff; color: #3730a3; }
+
+        .text-red { color: #ef4444; }
+        .text-green { color: #10b981; }
 
         @media (max-width: 768px) {
           .section-header { flex-direction: column; align-items: stretch; }

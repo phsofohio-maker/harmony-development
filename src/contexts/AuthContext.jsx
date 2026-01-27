@@ -1,13 +1,3 @@
-// Artifact ID: auth-context
-// Branch: 1 (main) (019b4c98...)
-// Version: 1
-// Command: create
-// UUID: 822ecc2e-0f6a-4444-aa22-39da4d953dd0
-// Created: 12/23/2025, 11:12:24 AM
-// Change: Created
-
-// ---
-
 // src/contexts/AuthContext.jsx
 // Authentication context with organization and role support
 
@@ -137,6 +127,7 @@ export function AuthProvider({ children }) {
     error,
     signIn,
     signOut,
+    logout: signOut, // ALIAS: backward compatibility for Sidebar
     resetPassword,
     hasRole,
     isOwner,

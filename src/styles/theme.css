@@ -1,22 +1,3 @@
-# Artifact ID: theme-css
-# Branch: 3 (main) (019be6ea...)
-# Version: 1
-# Command: create
-# UUID: 1dbee925-1fa1-4d1e-8629-34497cbf1252
-# Created: 1/21/2026, 4:33:33 PM
-# Change: Created
-
-# ---
-
-/**
- * theme.css - CSS Custom Properties for Theming
- * 
- * These variables are the defaults and will be overridden
- * by ThemeProvider when organization branding is loaded.
- * 
- * Import this file in your main index.css or App.jsx
- */
-
 :root {
   /* ===========================================
      PRIMARY BRAND COLORS

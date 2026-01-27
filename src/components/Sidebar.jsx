@@ -39,9 +39,12 @@ const Sidebar = ({ currentPage, onNavigate, collapsed, onToggleCollapse }) => {
       <div className="sidebar-header">
         <div className="logo">
           <div className="logo-icon">
-            <BRAND_ICONS.heart size={24} className="heart-icon" />
-          </div>
-          {!collapsed && <span className="logo-text">Harmony Health Care Assistant</span>}
+            </div>
+            {!collapsed && <img 
+      src="https://previews.dropbox.com/p/thumb/AC6VfdhMrr4RxN7yHYkEJVwdTspoIDDiA5wVvEWU9kMVjzIP505W2xLFp4SAfCwY9uJfAN6P5ipA1bzYUedgsZX8APANOsr3_UMEGNz2AmIYjijMWyyPLDgloSO0bEHd67y7oAD3eV8Ujr_C-0xKgNj8tCmRP2VxVfxkRT5DVT7OtluYGnyyGdFTymAkmOhWsMy2sOfkqjYbOFfUuwlax9-OYAwd-4JODKfSK9_oo2x2gSfboz3ci97BtfUJVEFN48y96l7Mp_Dx28QkwELQRsXFnRT9xkg93cVxOcepMgFuMSO9zkrS9uCtCLpdWMlFvZE/p.png" 
+      alt="Harmony Health Care Assistant Logo"
+      className="custom-logo"
+    />}
         </div>
         <button className="collapse-btn" onClick={onToggleCollapse} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
           <CollapseIcon size={16} />
@@ -123,7 +126,7 @@ const Sidebar = ({ currentPage, onNavigate, collapsed, onToggleCollapse }) => {
         .logo {
           display: flex;
           align-items: center;
-          padding: 10px;
+          padding: 5px;
         }
 
         .logo-icon {
@@ -133,27 +136,6 @@ const Sidebar = ({ currentPage, onNavigate, collapsed, onToggleCollapse }) => {
           display: flex;
           align-items: center;
           justify-content: center;
-        }
-
-        .logo-icon .heart-icon {
-          color: #ffffff;
-          fill: #ffffff;
-        }
-
-        .logo-icon .pulse-icon {
-          position: absolute;
-          bottom: -2px;
-          right: -4px;
-          color: ##ffffff;
-          background: transparent;
-          border-radius: 2px;
-        }
-
-        .logo-text {
-          font-size: 1.25rem;
-          font-weight: 600;
-          letter-spacing: -0.025em;
-          padding: 5px;
         }
 
         .collapse-btn {
@@ -285,6 +267,26 @@ const Sidebar = ({ currentPage, onNavigate, collapsed, onToggleCollapse }) => {
 
         .sidebar.collapsed .user-info {
           justify-content: center;
+        }
+
+        .logo-icon {
+          position: relative;
+          width: 40px;  /* You might want to increase this to 40px if the logo is detailed */
+          height: 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+      .collpase-logo-icon {
+        display: none;
+      }
+
+        /* NEW STYLE: Ensure the image scales correctly */
+        .custom-logo {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
         }
 
         .logout-btn {
