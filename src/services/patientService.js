@@ -237,46 +237,158 @@ export const createPatientSchema = (data) => ({
  */
 export const docToPatient = (doc) => {
   const data = doc.data();
-  
-  // Convert all date fields safely
+
   const patient = {
     id: doc.id,
+
+    // Basic Info
     name: data.name || '',
+    firstName: data.firstName || '',
+    lastName: data.lastName || '',
     mrNumber: data.mrNumber || '',
     dateOfBirth: safeToDate(data.dateOfBirth),
+
+    // Identifiers
+    mbi: data.mbi || '',
+    medicaidNumber: data.medicaidNumber || '',
+    admissionNumber: data.admissionNumber || '',
+    ssn: data.ssn || '',
+
+    // Demographics
+    gender: data.gender || '',
+    race: data.race || '',
+    ethnicity: data.ethnicity || '',
+    maritalStatus: data.maritalStatus || '',
+    primaryLanguage: data.primaryLanguage || '',
+    religion: data.religion || '',
+
+    // Admission Info
     admissionDate: safeToDate(data.admissionDate),
     startOfCare: safeToDate(data.startOfCare),
-    
+    electionDate: safeToDate(data.electionDate),
+    levelOfCare: data.levelOfCare || '',
+    disasterCode: data.disasterCode || '',
+
     // Benefit Period fields
     startingBenefitPeriod: data.startingBenefitPeriod || 1,
     isReadmission: data.isReadmission || false,
     priorHospiceDays: data.priorHospiceDays || 0,
-    
+
+    // Advance Directives
+    isDnr: data.isDnr || false,
+    codeStatus: data.codeStatus || '',
+    dpoaName: data.dpoaName || '',
+    livingWillOnFile: data.livingWillOnFile || false,
+    polstOnFile: data.polstOnFile || false,
+
     // F2F fields
     f2fRequired: data.f2fRequired || false,
     f2fCompleted: data.f2fCompleted || false,
     f2fDate: safeToDate(data.f2fDate),
     f2fPhysician: data.f2fPhysician || '',
-    
+    f2fProviderRole: data.f2fProviderRole || '',
+    f2fProviderNpi: data.f2fProviderNpi || '',
+
     // HUV fields
     huv1Completed: data.huv1Completed || false,
     huv1Date: safeToDate(data.huv1Date),
     huv2Completed: data.huv2Completed || false,
     huv2Date: safeToDate(data.huv2Date),
-    
-    // Other fields
-    attendingPhysician: data.attendingPhysician || '',
+
+    // Physicians (nested objects with null safety)
+    attendingPhysician: {
+      name: data.attendingPhysician?.name || '',
+      npi: data.attendingPhysician?.npi || '',
+      address: data.attendingPhysician?.address || '',
+      phone: data.attendingPhysician?.phone || '',
+      fax: data.attendingPhysician?.fax || '',
+      email: data.attendingPhysician?.email || '',
+    },
+    hospicePhysician: {
+      name: data.hospicePhysician?.name || '',
+      npi: data.hospicePhysician?.npi || '',
+    },
+
+    // Contacts & Caregivers
+    primaryContact: {
+      name: data.primaryContact?.name || '',
+      relationship: data.primaryContact?.relationship || '',
+      phone: data.primaryContact?.phone || '',
+      address: data.primaryContact?.address || '',
+    },
+    primaryCaregiver: {
+      name: data.primaryCaregiver?.name || '',
+      relationship: data.primaryCaregiver?.relationship || '',
+      address: data.primaryCaregiver?.address || '',
+      mobile: data.primaryCaregiver?.mobile || '',
+      email: data.primaryCaregiver?.email || '',
+    },
+    secondaryCaregiver: {
+      name: data.secondaryCaregiver?.name || '',
+      relationship: data.secondaryCaregiver?.relationship || '',
+      address: data.secondaryCaregiver?.address || '',
+      mobile: data.secondaryCaregiver?.mobile || '',
+    },
+
+    // Services
+    pharmacy: {
+      name: data.pharmacy?.name || '',
+      address: data.pharmacy?.address || '',
+      phone: data.pharmacy?.phone || '',
+      fax: data.pharmacy?.fax || '',
+    },
+    funeralHome: {
+      name: data.funeralHome?.name || '',
+      address: data.funeralHome?.address || '',
+      phone: data.funeralHome?.phone || '',
+    },
+    referral: {
+      source: data.referral?.source || '',
+    },
+
+    // Clinical Arrays
+    diagnoses: Array.isArray(data.diagnoses) ? data.diagnoses.map(d => ({
+      name: d.name || '',
+      icd10: d.icd10 || '',
+      relationship: d.relationship || 'Terminal',
+    })) : [],
+    medications: Array.isArray(data.medications) ? data.medications.map(m => ({
+      name: m.name || '',
+      dose: m.dose || '',
+      route: m.route || '',
+      frequency: m.frequency || '',
+      indication: m.indication || '',
+    })) : [],
+    allergies: Array.isArray(data.allergies) ? data.allergies.map(a => ({
+      allergen: a.allergen || '',
+      reactionType: a.reactionType || '',
+      severity: a.severity || '',
+    })) : [],
+    nkda: data.nkda || false,
+    nfka: data.nfka || false,
+
+    // Location
+    address: data.address || '',
+    locationName: data.locationName || '',
+    locationType: data.locationType || '',
+    institutionName: data.institutionName || '',
+
+    // Notes
+    otherNotes: data.otherNotes || '',
+
+    // Status
     status: data.status || 'active',
     dischargeDate: safeToDate(data.dischargeDate),
     dischargeReason: data.dischargeReason || '',
-    
+
+    // Metadata
     createdAt: safeToDate(data.createdAt),
     updatedAt: safeToDate(data.updatedAt)
   };
-  
+
   // Calculate compliance data
   patient.compliance = calculatePatientCompliance(patient);
-  
+
   return patient;
 };
 
