@@ -458,21 +458,28 @@ export async function getPatient(orgId, patientId) {
  */
 export async function addPatient(orgId, patientData, userId) {
   try {
+    // Auto-parse firstName/lastName from name if not provided
+    if (patientData.name && !patientData.firstName && !patientData.lastName) {
+      const parts = patientData.name.trim().split(/\s+/);
+      patientData.firstName = parts[0] || '';
+      patientData.lastName = parts.slice(1).join(' ') || '';
+    }
+
     // Determine if F2F is required based on period and readmission status
     const startingPeriod = parseInt(patientData.startingBenefitPeriod) || 1;
     const isReadmission = patientData.isReadmission || false;
     const f2fRequired = startingPeriod >= 3 || isReadmission;
-    
+
     const patient = createPatientSchema({
       ...patientData,
       f2fRequired,
       createdBy: userId,
       updatedBy: userId
     });
-    
+
     const patientsRef = collection(db, 'organizations', orgId, 'patients');
     const docRef = await addDoc(patientsRef, patient);
-    
+
     return { id: docRef.id, ...patient };
   } catch (error) {
     console.error('Error adding patient:', error);
@@ -480,38 +487,73 @@ export async function addPatient(orgId, patientData, userId) {
   }
 }
 
+// Nested object fields that support partial merge updates
+const NESTED_OBJECT_FIELDS = [
+  'attendingPhysician', 'hospicePhysician',
+  'primaryContact', 'primaryCaregiver', 'secondaryCaregiver',
+  'pharmacy', 'funeralHome', 'referral'
+];
+
+// Array fields that are replaced in full on update
+const ARRAY_FIELDS = ['diagnoses', 'medications', 'allergies'];
+
 /**
  * Update a patient
  */
 export async function updatePatient(orgId, patientId, updates, userId) {
   try {
     const patientRef = doc(db, 'organizations', orgId, 'patients', patientId);
-    
+
     // Recalculate F2F requirement if period or readmission changed
     if ('startingBenefitPeriod' in updates || 'isReadmission' in updates) {
       const currentDoc = await getDoc(patientRef);
       const current = currentDoc.data();
-      
+
       const startingPeriod = updates.startingBenefitPeriod ?? current.startingBenefitPeriod ?? 1;
       const isReadmission = updates.isReadmission ?? current.isReadmission ?? false;
       updates.f2fRequired = startingPeriod >= 3 || isReadmission;
     }
-    
-    // Convert dates to Timestamps
+
     const processedUpdates = { ...updates };
-    const dateFields = ['admissionDate', 'startOfCare', 'f2fDate', 'huv1Date', 'huv2Date', 'dischargeDate', 'dateOfBirth'];
-    
+
+    // Convert date fields to Timestamps
+    const dateFields = [
+      'admissionDate', 'startOfCare', 'electionDate',
+      'f2fDate', 'huv1Date', 'huv2Date',
+      'dischargeDate', 'dateOfBirth'
+    ];
     dateFields.forEach(field => {
       if (field in processedUpdates) {
         processedUpdates[field] = safeToTimestamp(processedUpdates[field]);
       }
     });
-    
+
+    // Merge nested objects using dot notation so partial updates
+    // don't overwrite sibling fields (e.g. updating just npi keeps name)
+    NESTED_OBJECT_FIELDS.forEach(field => {
+      if (field in processedUpdates && typeof processedUpdates[field] === 'object' && processedUpdates[field] !== null) {
+        const nested = processedUpdates[field];
+        delete processedUpdates[field];
+        Object.entries(nested).forEach(([key, value]) => {
+          processedUpdates[`${field}.${key}`] = value;
+        });
+      }
+    });
+
+    // Sanitize array fields (full replacement with safe defaults)
+    ARRAY_FIELDS.forEach(field => {
+      if (field in processedUpdates) {
+        if (!Array.isArray(processedUpdates[field])) {
+          processedUpdates[field] = [];
+        }
+      }
+    });
+
     processedUpdates.updatedAt = serverTimestamp();
     processedUpdates.updatedBy = userId;
-    
+
     await updateDoc(patientRef, processedUpdates);
-    
+
     return { id: patientId, ...processedUpdates };
   } catch (error) {
     console.error('Error updating patient:', error);
