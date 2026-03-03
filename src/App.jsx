@@ -17,6 +17,7 @@ import CertificationsPage from './components/CertificationsPage';
 import DocumentsPage from './components/DocumentsPage';
 import SettingsPage from './components/SettingsPage';
 import NotificationsPage from './components/NotificationsPage';
+import HomeVisitAssessment from './components/HomeVisitAssessment';
 import OnboardingWizard from './components/OnboardingWizard';
 import WelcomeTour from './components/WelcomeTour';
 
@@ -157,6 +158,8 @@ function AppContent() {
         return <HUVPage />;
       case 'documents':
         return <DocumentsPage />;
+      case 'visits':
+        return <HomeVisitAssessment />;
       case 'notifications':
         return <NotificationsPage />;
       case 'settings':
