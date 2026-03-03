@@ -56,6 +56,13 @@ service cloud.firestore {
         allow read: if isOrgStaff(orgId);
         allow create, update: if isOrgStaff(orgId);
         allow delete: if isOrgAdmin(orgId);
+
+        // ── Visits sub-collection (Home Visit Assessments) ──
+        match /visits/{visitId} {
+          allow read: if isOrgStaff(orgId);
+          allow create, update: if isOrgStaff(orgId);
+          allow delete: if isOrgAdmin(orgId);
+        }
       }
 
       // ── Generated Documents sub-collection ────────────────────

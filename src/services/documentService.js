@@ -20,32 +20,49 @@ const functions = getFunctions();
 const db = getFirestore();
 
 /**
- * Generate a document for a patient
- * Uses the new stateless Cloud Function
+ * Generate a document for a patient.
+ * Uses the stateless Cloud Function. If the template is not found,
+ * falls back to a generic layout with all available merge data.
  */
 export async function generateDocument(patientId, documentType, customData = {}) {
   try {
-    // Call NEW stateless function
     const generateDocFn = httpsCallable(functions, 'generateDocument');
-    
+
     const result = await generateDocFn({
       patientId,
       documentType,
-      customData
+      customData,
     });
 
     return result.data;
   } catch (error) {
     console.error('Error generating document:', error);
-    
+
     // Parse Firebase function errors
-    if (error.code === 'functions/not-found') {
-      throw new Error('Template not configured. Please contact administrator.');
-    }
     if (error.code === 'functions/permission-denied') {
       throw new Error('You do not have permission to generate documents.');
     }
-    
+
+    // Fallback: if template not found, retry with useGenericTemplate flag
+    if (error.code === 'functions/not-found' || error.message?.includes('Template not found')) {
+      console.warn(`Template "${documentType}" not found — retrying with generic layout`);
+      try {
+        const generateDocFn = httpsCallable(functions, 'generateDocument');
+        const fallback = await generateDocFn({
+          patientId,
+          documentType,
+          customData: {
+            ...customData,
+            useGenericTemplate: true,
+          },
+        });
+        return fallback.data;
+      } catch (fallbackErr) {
+        console.error('Generic fallback also failed:', fallbackErr);
+        throw new Error(`Template "${documentType}" not configured and generic fallback failed.`);
+      }
+    }
+
     throw new Error(error.message || 'Failed to generate document');
   }
 }

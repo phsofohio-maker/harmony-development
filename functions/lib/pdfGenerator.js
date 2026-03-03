@@ -38,30 +38,8 @@ async function generatePDF(templateConfig, patientData, orgData, customData = {}
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', reject);
 
-      // Merge data context
-      const mergeContext = {
-        ...patientData,
-        ...customData,
-        orgName: orgData.name || 'Parrish Health Systems',
-        generatedDate: new Date().toLocaleDateString('en-US', {
-          year: 'numeric', month: 'long', day: 'numeric'
-        }),
-        patientName: patientData.name,
-        patientDOB: formatDate(patientData.dob),
-        patientMRN: patientData.mrn || patientData.mrNumber || 'N/A',
-        currentPeriod: patientData.currentPeriod || patientData.compliance?.cti?.periodShortName || 'N/A',
-        periodStart: formatDate(patientData.periodStart || patientData.compliance?.cti?.periodStart),
-        periodEnd: formatDate(patientData.periodEnd || patientData.compliance?.cti?.periodEnd),
-        certDueDate: formatDate(patientData.certDueDate || patientData.compliance?.cti?.certDueDate),
-        admissionDate: formatDate(patientData.socDate || patientData.admissionDate),
-        diagnosis: patientData.diagnosis || patientData.primaryDiagnosis || 'N/A',
-        attendingPhysician: patientData.attendingPhysician || patientData.attendingName || 'N/A',
-        attendingNPI: patientData.attendingNPI || patientData.npi || 'N/A',
-        f2fDate: formatDate(customData.f2fDate || patientData.f2fDate),
-        f2fProvider: customData.f2fProvider || patientData.f2fProvider || 'N/A',
-        f2fProviderCredentials: customData.f2fProviderCredentials || 'MD/DO/NP/PA',
-        visitDate: formatDate(customData.visitDate || new Date())
-      };
+      // Build comprehensive merge context from all patient/org fields
+      const mergeContext = prepareMergeData(patientData, orgData, customData);
 
       // Render header
       renderHeader(doc, templateConfig.header, mergeContext);
@@ -451,4 +429,174 @@ function formatDate(dateValue) {
   });
 }
 
-module.exports = { generatePDF };
+/**
+ * Prepare the full merge data context.
+ * Combines patient data, org data, and visit customData into a flat
+ * dictionary of ~107 keys for template merge field resolution.
+ */
+function prepareMergeData(patientData, orgData, customData = {}) {
+  const p = patientData || {};
+  const o = orgData || {};
+  const c = customData || {};
+
+  // Helper: safely access nested physician object or legacy string
+  const ap = typeof p.attendingPhysician === 'object' ? p.attendingPhysician : {};
+  const apName = ap.name || (typeof p.attendingPhysician === 'string' ? p.attendingPhysician : 'N/A');
+  const hp = typeof p.hospicePhysician === 'object' ? p.hospicePhysician : {};
+
+  // Primary diagnosis from diagnoses array
+  const primaryDx = Array.isArray(p.diagnoses) && p.diagnoses.length > 0 ? p.diagnoses[0] : {};
+  const allDiagnoses = Array.isArray(p.diagnoses) ? p.diagnoses.map(d => `${d.name} (${d.icd10 || 'N/A'}) [${d.relationship || ''}]`).join('; ') : 'N/A';
+
+  // Medications list
+  const allMedications = Array.isArray(p.medications) ? p.medications.map(m => `${m.name} ${m.dose} ${m.route} ${m.frequency}`.trim()).join('; ') : 'N/A';
+
+  // Allergies list
+  const allAllergies = p.nkda ? 'NKDA' : (Array.isArray(p.allergies) ? p.allergies.map(a => `${a.allergen} (${a.severity || ''})`).join('; ') : 'N/A');
+
+  return {
+    // ── Spread raw data first (custom overrides below) ──────────
+    ...p,
+    ...c,
+
+    // ── Generated / Meta ────────────────────────────────────────
+    generatedDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+    visitDate: formatDate(c.visitDate || new Date()),
+
+    // ── Organization ────────────────────────────────────────────
+    orgName: o.name || 'N/A',
+    agencyName: o.agencyName || o.name || 'N/A',
+    orgNpi: o.npi || 'N/A',
+    orgProviderNumber: o.providerNumber || 'N/A',
+    orgPhone: o.phone || 'N/A',
+    orgFax: o.fax || 'N/A',
+    orgAddress: o.address || 'N/A',
+    orgCity: o.city || '',
+    orgState: o.state || '',
+    orgZip: o.zip || '',
+
+    // ── Patient Identity ────────────────────────────────────────
+    patientName: p.name || 'N/A',
+    patientFirstName: p.firstName || '',
+    patientLastName: p.lastName || '',
+    patientDOB: formatDate(p.dateOfBirth || p.dob),
+    patientMRN: p.mrNumber || p.mrn || 'N/A',
+    patientMBI: p.mbi || 'N/A',
+    patientMedicaid: p.medicaidNumber || 'N/A',
+    patientAdmissionNumber: p.admissionNumber || 'N/A',
+    patientSSN: p.ssn || '',
+
+    // ── Demographics ────────────────────────────────────────────
+    patientGender: p.gender || 'N/A',
+    patientRace: p.race || 'N/A',
+    patientEthnicity: p.ethnicity || 'N/A',
+    patientMaritalStatus: p.maritalStatus || 'N/A',
+    patientLanguage: p.primaryLanguage || 'English',
+    patientReligion: p.religion || '',
+
+    // ── Location ────────────────────────────────────────────────
+    patientAddress: p.address || 'N/A',
+    patientLocationName: p.locationName || '',
+    patientLocationType: p.locationType || '',
+    patientInstitution: p.institutionName || '',
+
+    // ── Admission ───────────────────────────────────────────────
+    admissionDate: formatDate(p.admissionDate || p.socDate),
+    startOfCare: formatDate(p.startOfCare),
+    electionDate: formatDate(p.electionDate),
+    levelOfCare: p.levelOfCare || 'Routine',
+    disasterCode: p.disasterCode || '',
+
+    // ── Benefit Period ──────────────────────────────────────────
+    currentPeriod: p.compliance?.cti?.periodShortName || `Period ${p.startingBenefitPeriod || 1}`,
+    periodStart: formatDate(p.compliance?.cti?.periodStart),
+    periodEnd: formatDate(p.compliance?.cti?.periodEnd),
+    certDueDate: formatDate(p.compliance?.cti?.certDueDate),
+    certificationEndDate: formatDate(p.compliance?.cti?.certificationEndDate),
+    daysUntilCertEnd: p.compliance?.cti?.daysUntilCertEnd ?? 'N/A',
+    periodDuration: p.compliance?.cti?.periodDuration || 'N/A',
+    startingBenefitPeriod: p.startingBenefitPeriod || 1,
+    isReadmission: p.isReadmission ? 'Yes' : 'No',
+    priorHospiceDays: p.priorHospiceDays || 0,
+
+    // ── Attending Physician ─────────────────────────────────────
+    attendingPhysician: apName,
+    attendingPhysicianName: apName,
+    attendingNPI: ap.npi || 'N/A',
+    attendingPhone: ap.phone || 'N/A',
+    attendingFax: ap.fax || 'N/A',
+    attendingEmail: ap.email || '',
+    attendingAddress: ap.address || '',
+
+    // ── Hospice Physician ───────────────────────────────────────
+    hospicePhysicianName: hp.name || 'N/A',
+    hospicePhysicianNPI: hp.npi || 'N/A',
+
+    // ── F2F ─────────────────────────────────────────────────────
+    f2fRequired: p.f2fRequired || (p.startingBenefitPeriod >= 3 || p.isReadmission) ? 'Yes' : 'No',
+    f2fCompleted: p.f2fCompleted ? 'Yes' : 'No',
+    f2fDate: formatDate(c.f2fDate || p.f2fDate),
+    f2fPhysician: p.f2fPhysician || 'N/A',
+    f2fProvider: c.f2fProvider || p.f2fPhysician || 'N/A',
+    f2fProviderRole: p.f2fProviderRole || 'N/A',
+    f2fProviderNpi: p.f2fProviderNpi || 'N/A',
+    f2fProviderCredentials: c.f2fProviderCredentials || 'MD/DO/NP/PA',
+
+    // ── HUV ─────────────────────────────────────────────────────
+    huv1Completed: p.huv1Completed ? 'Yes' : 'No',
+    huv1Date: formatDate(p.huv1Date),
+    huv2Completed: p.huv2Completed ? 'Yes' : 'No',
+    huv2Date: formatDate(p.huv2Date),
+
+    // ── Diagnoses ───────────────────────────────────────────────
+    primaryDiagnosis: primaryDx.name || 'N/A',
+    primaryDiagnosisICD10: primaryDx.icd10 || 'N/A',
+    diagnosis: primaryDx.name || 'N/A',
+    allDiagnoses,
+
+    // ── Medications & Allergies ──────────────────────────────────
+    allMedications,
+    allAllergies,
+    nkda: p.nkda ? 'NKDA' : 'No',
+
+    // ── Advance Directives ──────────────────────────────────────
+    codeStatus: p.codeStatus || 'N/A',
+    isDnr: p.isDnr ? 'Yes' : 'No',
+    dpoaName: p.dpoaName || 'N/A',
+    livingWillOnFile: p.livingWillOnFile ? 'Yes' : 'No',
+    polstOnFile: p.polstOnFile ? 'Yes' : 'No',
+
+    // ── Contacts ────────────────────────────────────────────────
+    primaryContactName: p.primaryContact?.name || 'N/A',
+    primaryContactRelationship: p.primaryContact?.relationship || '',
+    primaryContactPhone: p.primaryContact?.phone || 'N/A',
+    primaryContactAddress: p.primaryContact?.address || '',
+
+    primaryCaregiverName: p.primaryCaregiver?.name || 'N/A',
+    primaryCaregiverRelationship: p.primaryCaregiver?.relationship || '',
+    primaryCaregiverMobile: p.primaryCaregiver?.mobile || 'N/A',
+    primaryCaregiverEmail: p.primaryCaregiver?.email || '',
+    primaryCaregiverAddress: p.primaryCaregiver?.address || '',
+
+    secondaryCaregiverName: p.secondaryCaregiver?.name || '',
+    secondaryCaregiverRelationship: p.secondaryCaregiver?.relationship || '',
+    secondaryCaregiverMobile: p.secondaryCaregiver?.mobile || '',
+
+    // ── Services ────────────────────────────────────────────────
+    pharmacyName: p.pharmacy?.name || 'N/A',
+    pharmacyPhone: p.pharmacy?.phone || 'N/A',
+    pharmacyFax: p.pharmacy?.fax || '',
+    pharmacyAddress: p.pharmacy?.address || '',
+
+    funeralHomeName: p.funeralHome?.name || 'N/A',
+    funeralHomePhone: p.funeralHome?.phone || '',
+    funeralHomeAddress: p.funeralHome?.address || '',
+
+    referralSource: p.referral?.source || 'N/A',
+
+    // ── Notes ───────────────────────────────────────────────────
+    otherNotes: p.otherNotes || '',
+  };
+}
+
+module.exports = { generatePDF, prepareMergeData };
