@@ -15,6 +15,7 @@ import { db } from '../lib/firebase';
 import BrandingSettings from './BrandingSettings';
 import TeamManagement from './TeamManagement';
 import PatientImportExport from './PatientImportExport';
+import PhysicianDirectory from './PhysicianDirectory';
 import { 
   Building2, 
   Palette, 
@@ -27,7 +28,8 @@ import {
   X,
   Mail,
   Users,
-  Database
+  Database,
+  Stethoscope
 } from 'lucide-react';
 
 const SettingsPage = () => {
@@ -209,6 +211,7 @@ const SettingsPage = () => {
     { id: 'general', label: 'General', icon: Building2 },
     { id: 'branding', label: 'Branding', icon: Palette },
     { id: 'team', label: 'Team', icon: Users },
+    { id: 'physicians', label: 'Physicians', icon: Stethoscope },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'data', label: 'Data', icon: Database },
   ];
@@ -498,6 +501,11 @@ const SettingsPage = () => {
         {/* Team Tab */}
         {activeTab === 'team' && (
           <TeamManagement />
+        )}
+
+        {/* Physicians Tab */}
+        {activeTab === 'physicians' && (
+          <PhysicianDirectory />
         )}
 
         {/* Notifications Tab */}
