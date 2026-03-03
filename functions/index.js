@@ -24,6 +24,9 @@ const { resendInvite, cancelInvite, createInvite } = require('./manageInvites');
 
 // Patient import/export
 const { exportPatients, importPatients } = require('./patientImportExport');
+
+// Migration
+const { migratePatients } = require('./migratePatients');
 /**
  * Manually trigger certification check (for testing)
  * Note: Since this is just a test trigger, I kept it here. 
@@ -65,6 +68,9 @@ module.exports = {
   // Patient data
   exportPatients,
   importPatients,
+
+  // Migration
+  migratePatients,
 
   //Other
   testEmail,

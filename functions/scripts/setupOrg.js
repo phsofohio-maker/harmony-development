@@ -17,24 +17,53 @@ async function setupOrganization() {
   // This is required for dailyCertificationCheck and weeklySummary
   await orgRef.set({
     name: 'Parrish Health Systems',
+
+    // Agency / Provider info
+    agencyName: '',
+    providerNumber: '',
+    npi: '',
+    phone: '',
+    fax: '',
+    address: '',
+    city: '',
+    state: 'OH',
+    zip: '',
+
+    // Defaults
+    defaultPhysician: '',
+    defaultLevelOfCare: 'Routine',
+
     emailList: ['phsofohio@gmail.com'], // CHANGE THIS to your actual email
+    notifyDaysBefore: 5,
     notifications: {
-      dailyAlerts: true,
+      dailyCertAlerts: true,
       weeklySummary: true,
+      huvDailyReport: true,
       f2fAlerts: true,
-      leadDays: 14
     },
-    // 2. Configure Document Templates (Required for generateCertificationDocs)
+
+    // Compliance thresholds
+    compliance: {
+      certPeriodDays: 60,
+      f2fWindowDays: 30,
+      huvWindowDays: 5,
+    },
+
+    // Document Templates (Required for generateCertificationDocs)
     settings: {
       documentTemplates: {
-        '60DAY': '1CkUx8NCYOwNJEDnVkIQGsl_gRZt_AjD_hlW0ZG0AzTw',       // You must replace these with real Google Doc IDs
+        '60DAY': '1CkUx8NCYOwNJEDnVkIQGsl_gRZt_AjD_hlW0ZG0AzTw',
         '90DAY_INITIAL': '1-OFQEG2c2B4v65Rpyr7gn6A3fAqIC4-Qr65BEJWuUTo',
         '90DAY_SECOND': '1IB9I_BOGwweBZJUtu7XDOKwlghQJvC9MF4XAx6Vkjmk',
         'ATTEND_CERT': '1H74TZgRCXL4hdoTBdjXwRIVwGi-QjdAX1wXvBGF9Ee8',
         'PROGRESS_NOTE': '1PObRDB6JVBLvlMgMOw_6owbvucBUJdak58lH2u61YCM',
-        'F2F_ENCOUNTER': '1MRYBd6soKZMhx8Autzegm78FpGF4mi1a9L2Eva7ORaM'
+        'F2F_ENCOUNTER': '1MRYBd6soKZMhx8Autzegm78FpGF4mi1a9L2Eva7ORaM',
+        'HOME_VISIT_ASSESSMENT': '',
       }
-    }
+    },
+
+    // Physician directory
+    physicians: [],
   }, { merge: true });
 
   console.log('✅ Organization configuration updated successfully.');

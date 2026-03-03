@@ -26,6 +26,7 @@ const Sidebar = ({ currentPage, onNavigate, collapsed, onToggleCollapse }) => {
     { id: 'certifications', label: 'Certifications', icon: NAV_ICONS.certifications },
     { id: 'huv', label: 'HUV Tracking', icon: NAV_ICONS.huv },
     { id: 'documents', label: 'Documents', icon: NAV_ICONS.documents },
+    { id: 'visits', label: 'Visits', icon: NAV_ICONS.visits },
     { id: 'notifications', label: 'Notifications', icon: NAV_ICONS.notifications },
     { id: 'settings', label: 'Settings', icon: NAV_ICONS.settings },
   ];

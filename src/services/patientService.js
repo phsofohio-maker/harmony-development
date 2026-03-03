@@ -87,38 +87,144 @@ function safeToTimestamp(value) {
 export const createPatientSchema = (data) => ({
   // Basic Info
   name: data.name || '',
+  firstName: data.firstName || '',
+  lastName: data.lastName || '',
   mrNumber: data.mrNumber || '',
   dateOfBirth: safeToTimestamp(data.dateOfBirth),
-  
+
+  // Identifiers
+  mbi: data.mbi || '',
+  medicaidNumber: data.medicaidNumber || '',
+  admissionNumber: data.admissionNumber || '',
+  ssn: data.ssn || '',
+
+  // Demographics
+  gender: data.gender || '',
+  race: data.race || '',
+  ethnicity: data.ethnicity || '',
+  maritalStatus: data.maritalStatus || '',
+  primaryLanguage: data.primaryLanguage || '',
+  religion: data.religion || '',
+
   // Admission Info
   admissionDate: safeToTimestamp(data.admissionDate),
   startOfCare: safeToTimestamp(data.startOfCare),
-  
+  electionDate: safeToTimestamp(data.electionDate),
+  levelOfCare: data.levelOfCare || '',
+  disasterCode: data.disasterCode || '',
+
   // Benefit Period Tracking
   startingBenefitPeriod: parseInt(data.startingBenefitPeriod) || 1,
   isReadmission: data.isReadmission || false,
   priorHospiceDays: parseInt(data.priorHospiceDays) || 0,
-  
+
+  // Advance Directives
+  isDnr: data.isDnr || false,
+  codeStatus: data.codeStatus || '',
+  dpoaName: data.dpoaName || '',
+  livingWillOnFile: data.livingWillOnFile || false,
+  polstOnFile: data.polstOnFile || false,
+
   // F2F Tracking
   f2fRequired: data.f2fRequired || false,
   f2fCompleted: data.f2fCompleted || false,
   f2fDate: safeToTimestamp(data.f2fDate),
   f2fPhysician: data.f2fPhysician || '',
-  
+  f2fProviderRole: data.f2fProviderRole || '',
+  f2fProviderNpi: data.f2fProviderNpi || '',
+
   // HUV Tracking
   huv1Completed: data.huv1Completed || false,
   huv1Date: safeToTimestamp(data.huv1Date),
   huv2Completed: data.huv2Completed || false,
   huv2Date: safeToTimestamp(data.huv2Date),
-  
-  // Physician Info
-  attendingPhysician: data.attendingPhysician || '',
-  
+
+  // Physicians (nested objects)
+  attendingPhysician: {
+    name: data.attendingPhysician?.name || '',
+    npi: data.attendingPhysician?.npi || '',
+    address: data.attendingPhysician?.address || '',
+    phone: data.attendingPhysician?.phone || '',
+    fax: data.attendingPhysician?.fax || '',
+    email: data.attendingPhysician?.email || '',
+  },
+  hospicePhysician: {
+    name: data.hospicePhysician?.name || '',
+    npi: data.hospicePhysician?.npi || '',
+  },
+
+  // Contacts & Caregivers (nested objects)
+  primaryContact: {
+    name: data.primaryContact?.name || '',
+    relationship: data.primaryContact?.relationship || '',
+    phone: data.primaryContact?.phone || '',
+    address: data.primaryContact?.address || '',
+  },
+  primaryCaregiver: {
+    name: data.primaryCaregiver?.name || '',
+    relationship: data.primaryCaregiver?.relationship || '',
+    address: data.primaryCaregiver?.address || '',
+    mobile: data.primaryCaregiver?.mobile || '',
+    email: data.primaryCaregiver?.email || '',
+  },
+  secondaryCaregiver: {
+    name: data.secondaryCaregiver?.name || '',
+    relationship: data.secondaryCaregiver?.relationship || '',
+    address: data.secondaryCaregiver?.address || '',
+    mobile: data.secondaryCaregiver?.mobile || '',
+  },
+
+  // Services (nested objects)
+  pharmacy: {
+    name: data.pharmacy?.name || '',
+    address: data.pharmacy?.address || '',
+    phone: data.pharmacy?.phone || '',
+    fax: data.pharmacy?.fax || '',
+  },
+  funeralHome: {
+    name: data.funeralHome?.name || '',
+    address: data.funeralHome?.address || '',
+    phone: data.funeralHome?.phone || '',
+  },
+  referral: {
+    source: data.referral?.source || '',
+  },
+
+  // Clinical Arrays
+  diagnoses: Array.isArray(data.diagnoses) ? data.diagnoses.map(d => ({
+    name: d.name || '',
+    icd10: d.icd10 || '',
+    relationship: d.relationship || 'Terminal',
+  })) : [],
+  medications: Array.isArray(data.medications) ? data.medications.map(m => ({
+    name: m.name || '',
+    dose: m.dose || '',
+    route: m.route || '',
+    frequency: m.frequency || '',
+    indication: m.indication || '',
+  })) : [],
+  allergies: Array.isArray(data.allergies) ? data.allergies.map(a => ({
+    allergen: a.allergen || '',
+    reactionType: a.reactionType || '',
+    severity: a.severity || '',
+  })) : [],
+  nkda: data.nkda || false,
+  nfka: data.nfka || false,
+
+  // Location
+  address: data.address || '',
+  locationName: data.locationName || '',
+  locationType: data.locationType || '',
+  institutionName: data.institutionName || '',
+
+  // Notes
+  otherNotes: data.otherNotes || '',
+
   // Status
   status: data.status || 'active',
   dischargeDate: safeToTimestamp(data.dischargeDate),
   dischargeReason: data.dischargeReason || '',
-  
+
   // Metadata
   createdAt: data.createdAt || serverTimestamp(),
   updatedAt: serverTimestamp(),
@@ -131,46 +237,158 @@ export const createPatientSchema = (data) => ({
  */
 export const docToPatient = (doc) => {
   const data = doc.data();
-  
-  // Convert all date fields safely
+
   const patient = {
     id: doc.id,
+
+    // Basic Info
     name: data.name || '',
+    firstName: data.firstName || '',
+    lastName: data.lastName || '',
     mrNumber: data.mrNumber || '',
     dateOfBirth: safeToDate(data.dateOfBirth),
+
+    // Identifiers
+    mbi: data.mbi || '',
+    medicaidNumber: data.medicaidNumber || '',
+    admissionNumber: data.admissionNumber || '',
+    ssn: data.ssn || '',
+
+    // Demographics
+    gender: data.gender || '',
+    race: data.race || '',
+    ethnicity: data.ethnicity || '',
+    maritalStatus: data.maritalStatus || '',
+    primaryLanguage: data.primaryLanguage || '',
+    religion: data.religion || '',
+
+    // Admission Info
     admissionDate: safeToDate(data.admissionDate),
     startOfCare: safeToDate(data.startOfCare),
-    
+    electionDate: safeToDate(data.electionDate),
+    levelOfCare: data.levelOfCare || '',
+    disasterCode: data.disasterCode || '',
+
     // Benefit Period fields
     startingBenefitPeriod: data.startingBenefitPeriod || 1,
     isReadmission: data.isReadmission || false,
     priorHospiceDays: data.priorHospiceDays || 0,
-    
+
+    // Advance Directives
+    isDnr: data.isDnr || false,
+    codeStatus: data.codeStatus || '',
+    dpoaName: data.dpoaName || '',
+    livingWillOnFile: data.livingWillOnFile || false,
+    polstOnFile: data.polstOnFile || false,
+
     // F2F fields
     f2fRequired: data.f2fRequired || false,
     f2fCompleted: data.f2fCompleted || false,
     f2fDate: safeToDate(data.f2fDate),
     f2fPhysician: data.f2fPhysician || '',
-    
+    f2fProviderRole: data.f2fProviderRole || '',
+    f2fProviderNpi: data.f2fProviderNpi || '',
+
     // HUV fields
     huv1Completed: data.huv1Completed || false,
     huv1Date: safeToDate(data.huv1Date),
     huv2Completed: data.huv2Completed || false,
     huv2Date: safeToDate(data.huv2Date),
-    
-    // Other fields
-    attendingPhysician: data.attendingPhysician || '',
+
+    // Physicians (nested objects with null safety)
+    attendingPhysician: {
+      name: data.attendingPhysician?.name || '',
+      npi: data.attendingPhysician?.npi || '',
+      address: data.attendingPhysician?.address || '',
+      phone: data.attendingPhysician?.phone || '',
+      fax: data.attendingPhysician?.fax || '',
+      email: data.attendingPhysician?.email || '',
+    },
+    hospicePhysician: {
+      name: data.hospicePhysician?.name || '',
+      npi: data.hospicePhysician?.npi || '',
+    },
+
+    // Contacts & Caregivers
+    primaryContact: {
+      name: data.primaryContact?.name || '',
+      relationship: data.primaryContact?.relationship || '',
+      phone: data.primaryContact?.phone || '',
+      address: data.primaryContact?.address || '',
+    },
+    primaryCaregiver: {
+      name: data.primaryCaregiver?.name || '',
+      relationship: data.primaryCaregiver?.relationship || '',
+      address: data.primaryCaregiver?.address || '',
+      mobile: data.primaryCaregiver?.mobile || '',
+      email: data.primaryCaregiver?.email || '',
+    },
+    secondaryCaregiver: {
+      name: data.secondaryCaregiver?.name || '',
+      relationship: data.secondaryCaregiver?.relationship || '',
+      address: data.secondaryCaregiver?.address || '',
+      mobile: data.secondaryCaregiver?.mobile || '',
+    },
+
+    // Services
+    pharmacy: {
+      name: data.pharmacy?.name || '',
+      address: data.pharmacy?.address || '',
+      phone: data.pharmacy?.phone || '',
+      fax: data.pharmacy?.fax || '',
+    },
+    funeralHome: {
+      name: data.funeralHome?.name || '',
+      address: data.funeralHome?.address || '',
+      phone: data.funeralHome?.phone || '',
+    },
+    referral: {
+      source: data.referral?.source || '',
+    },
+
+    // Clinical Arrays
+    diagnoses: Array.isArray(data.diagnoses) ? data.diagnoses.map(d => ({
+      name: d.name || '',
+      icd10: d.icd10 || '',
+      relationship: d.relationship || 'Terminal',
+    })) : [],
+    medications: Array.isArray(data.medications) ? data.medications.map(m => ({
+      name: m.name || '',
+      dose: m.dose || '',
+      route: m.route || '',
+      frequency: m.frequency || '',
+      indication: m.indication || '',
+    })) : [],
+    allergies: Array.isArray(data.allergies) ? data.allergies.map(a => ({
+      allergen: a.allergen || '',
+      reactionType: a.reactionType || '',
+      severity: a.severity || '',
+    })) : [],
+    nkda: data.nkda || false,
+    nfka: data.nfka || false,
+
+    // Location
+    address: data.address || '',
+    locationName: data.locationName || '',
+    locationType: data.locationType || '',
+    institutionName: data.institutionName || '',
+
+    // Notes
+    otherNotes: data.otherNotes || '',
+
+    // Status
     status: data.status || 'active',
     dischargeDate: safeToDate(data.dischargeDate),
     dischargeReason: data.dischargeReason || '',
-    
+
+    // Metadata
     createdAt: safeToDate(data.createdAt),
     updatedAt: safeToDate(data.updatedAt)
   };
-  
+
   // Calculate compliance data
   patient.compliance = calculatePatientCompliance(patient);
-  
+
   return patient;
 };
 
@@ -240,21 +458,28 @@ export async function getPatient(orgId, patientId) {
  */
 export async function addPatient(orgId, patientData, userId) {
   try {
+    // Auto-parse firstName/lastName from name if not provided
+    if (patientData.name && !patientData.firstName && !patientData.lastName) {
+      const parts = patientData.name.trim().split(/\s+/);
+      patientData.firstName = parts[0] || '';
+      patientData.lastName = parts.slice(1).join(' ') || '';
+    }
+
     // Determine if F2F is required based on period and readmission status
     const startingPeriod = parseInt(patientData.startingBenefitPeriod) || 1;
     const isReadmission = patientData.isReadmission || false;
     const f2fRequired = startingPeriod >= 3 || isReadmission;
-    
+
     const patient = createPatientSchema({
       ...patientData,
       f2fRequired,
       createdBy: userId,
       updatedBy: userId
     });
-    
+
     const patientsRef = collection(db, 'organizations', orgId, 'patients');
     const docRef = await addDoc(patientsRef, patient);
-    
+
     return { id: docRef.id, ...patient };
   } catch (error) {
     console.error('Error adding patient:', error);
@@ -262,38 +487,73 @@ export async function addPatient(orgId, patientData, userId) {
   }
 }
 
+// Nested object fields that support partial merge updates
+const NESTED_OBJECT_FIELDS = [
+  'attendingPhysician', 'hospicePhysician',
+  'primaryContact', 'primaryCaregiver', 'secondaryCaregiver',
+  'pharmacy', 'funeralHome', 'referral'
+];
+
+// Array fields that are replaced in full on update
+const ARRAY_FIELDS = ['diagnoses', 'medications', 'allergies'];
+
 /**
  * Update a patient
  */
 export async function updatePatient(orgId, patientId, updates, userId) {
   try {
     const patientRef = doc(db, 'organizations', orgId, 'patients', patientId);
-    
+
     // Recalculate F2F requirement if period or readmission changed
     if ('startingBenefitPeriod' in updates || 'isReadmission' in updates) {
       const currentDoc = await getDoc(patientRef);
       const current = currentDoc.data();
-      
+
       const startingPeriod = updates.startingBenefitPeriod ?? current.startingBenefitPeriod ?? 1;
       const isReadmission = updates.isReadmission ?? current.isReadmission ?? false;
       updates.f2fRequired = startingPeriod >= 3 || isReadmission;
     }
-    
-    // Convert dates to Timestamps
+
     const processedUpdates = { ...updates };
-    const dateFields = ['admissionDate', 'startOfCare', 'f2fDate', 'huv1Date', 'huv2Date', 'dischargeDate', 'dateOfBirth'];
-    
+
+    // Convert date fields to Timestamps
+    const dateFields = [
+      'admissionDate', 'startOfCare', 'electionDate',
+      'f2fDate', 'huv1Date', 'huv2Date',
+      'dischargeDate', 'dateOfBirth'
+    ];
     dateFields.forEach(field => {
       if (field in processedUpdates) {
         processedUpdates[field] = safeToTimestamp(processedUpdates[field]);
       }
     });
-    
+
+    // Merge nested objects using dot notation so partial updates
+    // don't overwrite sibling fields (e.g. updating just npi keeps name)
+    NESTED_OBJECT_FIELDS.forEach(field => {
+      if (field in processedUpdates && typeof processedUpdates[field] === 'object' && processedUpdates[field] !== null) {
+        const nested = processedUpdates[field];
+        delete processedUpdates[field];
+        Object.entries(nested).forEach(([key, value]) => {
+          processedUpdates[`${field}.${key}`] = value;
+        });
+      }
+    });
+
+    // Sanitize array fields (full replacement with safe defaults)
+    ARRAY_FIELDS.forEach(field => {
+      if (field in processedUpdates) {
+        if (!Array.isArray(processedUpdates[field])) {
+          processedUpdates[field] = [];
+        }
+      }
+    });
+
     processedUpdates.updatedAt = serverTimestamp();
     processedUpdates.updatedBy = userId;
-    
+
     await updateDoc(patientRef, processedUpdates);
-    
+
     return { id: patientId, ...processedUpdates };
   } catch (error) {
     console.error('Error updating patient:', error);

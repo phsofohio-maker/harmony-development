@@ -18,6 +18,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getPatients, addPatient, updatePatient, deletePatient } from '../services/patientService';
 import { formatDate } from '../services/certificationCalculations';
 import PatientModal from './PatientModal';
+import PatientChartView from './PatientChartView';
 
 const PatientsPage = () => {
   const { user } = useAuth();
@@ -46,6 +47,9 @@ const PatientsPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [saving, setSaving] = useState(false);
+
+  // Chart view state
+  const [chartPatient, setChartPatient] = useState(null);
 
   // Load patients
   useEffect(() => {
@@ -424,10 +428,17 @@ const PatientsPage = () => {
                     </td>
                     <td>
                       <div className="action-buttons">
-                        <button 
+                        <button
+                          className="action-btn"
+                          onClick={() => setChartPatient(patient)}
+                          title="View Chart"
+                        >
+                          📋
+                        </button>
+                        <button
                           className="action-btn"
                           onClick={() => openEditModal(patient)}
-                          title="View/Edit"
+                          title="Edit"
                         >
                           ✏️
                         </button>
@@ -487,7 +498,7 @@ const PatientsPage = () => {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Edit Modal */}
       {modalOpen && (
         <PatientModal
           patient={selectedPatient}
@@ -495,6 +506,15 @@ const PatientsPage = () => {
           onDelete={selectedPatient?.id ? handleDeletePatient : null}
           onClose={closeModal}
           saving={saving}
+        />
+      )}
+
+      {/* Chart View Panel */}
+      {chartPatient && (
+        <PatientChartView
+          patient={chartPatient}
+          onClose={() => setChartPatient(null)}
+          onEdit={(p) => { setChartPatient(null); openEditModal(p); }}
         />
       )}
 
