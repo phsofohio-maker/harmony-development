@@ -1,8 +1,83 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+
+    // ── Helper functions ──────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function belongsToOrg(orgId) {
+      return isSignedIn() && request.auth.token.orgId == orgId;
+    }
+
+    function hasRole(orgId, role) {
+      return belongsToOrg(orgId) && request.auth.token.role == role;
+    }
+
+    function isOrgAdmin(orgId) {
+      return hasRole(orgId, 'owner') || hasRole(orgId, 'admin');
+    }
+
+    function isOrgStaff(orgId) {
+      return isOrgAdmin(orgId) || hasRole(orgId, 'staff');
+    }
+
+    // ── Users collection ──────────────────────────────────────────
+    match /users/{userId} {
+      // Users can read their own profile
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      // Users can update their own profile (except role)
+      allow update: if isSignedIn() && request.auth.uid == userId
+                    && !('role' in request.resource.data
+                         && request.resource.data.role != resource.data.role);
+      // Cloud Functions handle creation (acceptInvite)
+      allow create, delete: if false;
+    }
+
+    // Admins can list users in their org
+    match /users/{userId} {
+      allow read: if isSignedIn()
+                  && resource.data.organizationId == request.auth.token.orgId
+                  && (request.auth.token.role == 'owner' || request.auth.token.role == 'admin');
+    }
+
+    // ── Organizations ─────────────────────────────────────────────
+    match /organizations/{orgId} {
+      // Any member of the org can read the org doc
+      allow read: if isOrgStaff(orgId);
+      // Only admin/owner can update org settings
+      allow update: if isOrgAdmin(orgId);
+      // Creation/deletion handled by Cloud Functions or console
+      allow create, delete: if false;
+
+      // ── Patients sub-collection ───────────────────────────────
+      match /patients/{patientId} {
+        allow read: if isOrgStaff(orgId);
+        allow create, update: if isOrgStaff(orgId);
+        allow delete: if isOrgAdmin(orgId);
+      }
+
+      // ── Generated Documents sub-collection ────────────────────
+      match /generatedDocuments/{docId} {
+        allow read: if isOrgStaff(orgId);
+        // Documents are created by Cloud Functions
+        allow create: if isOrgStaff(orgId);
+        allow update, delete: if isOrgAdmin(orgId);
+      }
+
+      // ── Document Templates sub-collection ─────────────────────
+      match /documentTemplates/{templateId} {
+        allow read: if isOrgStaff(orgId);
+        allow write: if isOrgAdmin(orgId);
+      }
+
+      // ── Pending Invites sub-collection ────────────────────────
+      match /pendingInvites/{inviteId} {
+        allow read: if isOrgAdmin(orgId);
+        // Managed by Cloud Functions (createInvite, cancelInvite)
+        allow write: if false;
+      }
     }
   }
 }
