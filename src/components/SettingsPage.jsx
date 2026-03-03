@@ -48,7 +48,24 @@ const SettingsPage = () => {
       weeklySummary: true,
       huvDailyReport: true,
       f2fAlerts: true,
-    }
+    },
+    // Agency info (new v1.2.0 fields)
+    agencyName: '',
+    providerNumber: '',
+    npi: '',
+    phone: '',
+    fax: '',
+    address: '',
+    city: '',
+    state: '',
+    zip: '',
+    defaultLevelOfCare: 'Routine',
+    // Compliance thresholds
+    compliance: {
+      certPeriodDays: 60,
+      f2fWindowDays: 30,
+      huvWindowDays: 5,
+    },
   });
 
   const [loading, setLoading] = useState(true);
@@ -81,7 +98,22 @@ const SettingsPage = () => {
             weeklySummary: data.notifications?.weeklySummary ?? true,
             huvDailyReport: data.notifications?.huvDailyReport ?? true,
             f2fAlerts: data.notifications?.f2fAlerts ?? true,
-          }
+          },
+          agencyName: data.agencyName || '',
+          providerNumber: data.providerNumber || '',
+          npi: data.npi || '',
+          phone: data.phone || '',
+          fax: data.fax || '',
+          address: data.address || '',
+          city: data.city || '',
+          state: data.state || '',
+          zip: data.zip || '',
+          defaultLevelOfCare: data.defaultLevelOfCare || 'Routine',
+          compliance: {
+            certPeriodDays: data.compliance?.certPeriodDays ?? 60,
+            f2fWindowDays: data.compliance?.f2fWindowDays ?? 30,
+            huvWindowDays: data.compliance?.huvWindowDays ?? 5,
+          },
         });
       }
     } catch (err) {
@@ -103,6 +135,17 @@ const SettingsPage = () => {
         notifyDaysBefore: settings.notifyDaysBefore,
         emailList: settings.emailList,
         notifications: settings.notifications,
+        agencyName: settings.agencyName,
+        providerNumber: settings.providerNumber,
+        npi: settings.npi,
+        phone: settings.phone,
+        fax: settings.fax,
+        address: settings.address,
+        city: settings.city,
+        state: settings.state,
+        zip: settings.zip,
+        defaultLevelOfCare: settings.defaultLevelOfCare,
+        compliance: settings.compliance,
         updatedAt: new Date(),
       });
 
@@ -222,7 +265,7 @@ const SettingsPage = () => {
           <div className="settings-section">
             <div className="section-card">
               <h2>Organization Information</h2>
-              
+
               <div className="form-group">
                 <label htmlFor="orgName">Organization Name</label>
                 <input
@@ -246,21 +289,203 @@ const SettingsPage = () => {
                 <span className="form-hint">Used as default when creating new patient records</span>
               </div>
 
-              <div className="form-actions">
-                <button className="btn-primary" onClick={handleSave} disabled={saving}>
-                  {saving ? (
-                    <>
-                      <Loader2 className="spin" size={16} />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save size={16} />
-                      Save Changes
-                    </>
-                  )}
-                </button>
+              <div className="form-group">
+                <label htmlFor="levelOfCare">Default Level of Care</label>
+                <select
+                  id="levelOfCare"
+                  value={settings.defaultLevelOfCare}
+                  onChange={(e) => setSettings(prev => ({ ...prev, defaultLevelOfCare: e.target.value }))}
+                  style={{ width: '200px', padding: '0.625rem 0.875rem', border: '1px solid var(--color-gray-300)', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-size-sm)' }}
+                >
+                  <option value="Routine">Routine</option>
+                  <option value="Continuous">Continuous</option>
+                  <option value="Respite">Respite</option>
+                  <option value="General Inpatient">General Inpatient</option>
+                </select>
               </div>
+            </div>
+
+            {/* Agency / Provider Info */}
+            <div className="section-card">
+              <h2>Agency / Provider Information</h2>
+              <p className="section-desc">
+                This information appears on generated documents and regulatory filings
+              </p>
+
+              <div className="form-group">
+                <label htmlFor="agencyName">Agency Name</label>
+                <input
+                  id="agencyName"
+                  type="text"
+                  value={settings.agencyName}
+                  onChange={(e) => setSettings(prev => ({ ...prev, agencyName: e.target.value }))}
+                  placeholder="Legal agency name"
+                />
+              </div>
+
+              <div className="form-row-settings">
+                <div className="form-group">
+                  <label htmlFor="providerNumber">Provider Number</label>
+                  <input
+                    id="providerNumber"
+                    type="text"
+                    value={settings.providerNumber}
+                    onChange={(e) => setSettings(prev => ({ ...prev, providerNumber: e.target.value }))}
+                    placeholder="CMS Provider #"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="orgNpi">Organization NPI</label>
+                  <input
+                    id="orgNpi"
+                    type="text"
+                    value={settings.npi}
+                    onChange={(e) => setSettings(prev => ({ ...prev, npi: e.target.value }))}
+                    placeholder="NPI #"
+                  />
+                </div>
+              </div>
+
+              <div className="form-row-settings">
+                <div className="form-group">
+                  <label htmlFor="orgPhone">Phone</label>
+                  <input
+                    id="orgPhone"
+                    type="text"
+                    value={settings.phone}
+                    onChange={(e) => setSettings(prev => ({ ...prev, phone: e.target.value }))}
+                    placeholder="(555) 555-5555"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="orgFax">Fax</label>
+                  <input
+                    id="orgFax"
+                    type="text"
+                    value={settings.fax}
+                    onChange={(e) => setSettings(prev => ({ ...prev, fax: e.target.value }))}
+                    placeholder="(555) 555-5556"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="orgAddress">Address</label>
+                <input
+                  id="orgAddress"
+                  type="text"
+                  value={settings.address}
+                  onChange={(e) => setSettings(prev => ({ ...prev, address: e.target.value }))}
+                  placeholder="Street address"
+                />
+              </div>
+
+              <div className="form-row-settings triple">
+                <div className="form-group">
+                  <label htmlFor="orgCity">City</label>
+                  <input
+                    id="orgCity"
+                    type="text"
+                    value={settings.city}
+                    onChange={(e) => setSettings(prev => ({ ...prev, city: e.target.value }))}
+                    placeholder="City"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="orgState">State</label>
+                  <input
+                    id="orgState"
+                    type="text"
+                    value={settings.state}
+                    onChange={(e) => setSettings(prev => ({ ...prev, state: e.target.value }))}
+                    placeholder="OH"
+                    maxLength={2}
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="orgZip">ZIP</label>
+                  <input
+                    id="orgZip"
+                    type="text"
+                    value={settings.zip}
+                    onChange={(e) => setSettings(prev => ({ ...prev, zip: e.target.value }))}
+                    placeholder="45000"
+                    maxLength={10}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Compliance Thresholds */}
+            <div className="section-card">
+              <h2>Compliance Thresholds</h2>
+              <p className="section-desc">
+                Configure deadlines and window periods for compliance tracking
+              </p>
+
+              <div className="form-row-settings triple">
+                <div className="form-group">
+                  <label htmlFor="certPeriodDays">Cert Period (days)</label>
+                  <input
+                    id="certPeriodDays"
+                    type="number"
+                    min="30"
+                    max="90"
+                    value={settings.compliance.certPeriodDays}
+                    onChange={(e) => setSettings(prev => ({
+                      ...prev,
+                      compliance: { ...prev.compliance, certPeriodDays: parseInt(e.target.value) || 60 }
+                    }))}
+                  />
+                  <span className="form-hint">Default: 60 days</span>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="f2fWindowDays">F2F Window (days)</label>
+                  <input
+                    id="f2fWindowDays"
+                    type="number"
+                    min="7"
+                    max="60"
+                    value={settings.compliance.f2fWindowDays}
+                    onChange={(e) => setSettings(prev => ({
+                      ...prev,
+                      compliance: { ...prev.compliance, f2fWindowDays: parseInt(e.target.value) || 30 }
+                    }))}
+                  />
+                  <span className="form-hint">Default: 30 days</span>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="huvWindowDays">HUV Window (days)</label>
+                  <input
+                    id="huvWindowDays"
+                    type="number"
+                    min="1"
+                    max="14"
+                    value={settings.compliance.huvWindowDays}
+                    onChange={(e) => setSettings(prev => ({
+                      ...prev,
+                      compliance: { ...prev.compliance, huvWindowDays: parseInt(e.target.value) || 5 }
+                    }))}
+                  />
+                  <span className="form-hint">Default: 5 days</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="form-actions">
+              <button className="btn-primary" onClick={handleSave} disabled={saving}>
+                {saving ? (
+                  <>
+                    <Loader2 className="spin" size={16} />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save size={16} />
+                    Save Changes
+                  </>
+                )}
+              </button>
             </div>
           </div>
         )}
@@ -809,6 +1034,24 @@ const styles = `
 
   .toggle-switch.on .toggle-knob {
     transform: translateX(20px);
+  }
+
+  /* Settings form rows */
+  .form-row-settings {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .form-row-settings.triple {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  @media (max-width: 640px) {
+    .form-row-settings,
+    .form-row-settings.triple {
+      grid-template-columns: 1fr;
+    }
   }
 `;
 
