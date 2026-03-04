@@ -25,5 +25,6 @@ dist-ssr
 
 
 #keys
+service-account-key.json
 functions/service-account-key.json
 functions/SERVICE_ACCOUNT_JSON
