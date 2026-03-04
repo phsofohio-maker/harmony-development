@@ -454,7 +454,7 @@ function prepareMergeData(patientData, orgData, customData = {}) {
   // Allergies list
   const allAllergies = p.nkda ? 'NKDA' : (Array.isArray(p.allergies) ? p.allergies.map(a => `${a.allergen} (${a.severity || ''})`).join('; ') : 'N/A');
 
-  return {
+  const base = {
     // ── Spread raw data first (custom overrides below) ──────────
     ...p,
     ...c,
@@ -597,6 +597,100 @@ function prepareMergeData(patientData, orgData, customData = {}) {
     // ── Notes ───────────────────────────────────────────────────
     otherNotes: p.otherNotes || '',
   };
+
+  // ── UPPER_CASE Template Merge Variable Aliases ──────────────
+  // Google Doc templates use UPPER_CASE merge fields (e.g. {{PATIENT_NAME}}).
+  // Map them from the camelCase values already computed above.
+
+  const diagnoses = Array.isArray(p.diagnoses) ? p.diagnoses : [];
+  const calcAge = p.dateOfBirth ? Math.floor((Date.now() - new Date(p.dateOfBirth?.toDate ? p.dateOfBirth.toDate() : p.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : '';
+
+  Object.assign(base, {
+    // Shared across most/all templates
+    PATIENT_NAME: base.patientName,
+    DOB: base.patientDOB,
+    MRN: base.patientMRN,
+    MBI: base.patientMBI,
+    MPI: base.patientMedicaid,
+
+    // Gender checkbox
+    CBX_GENDER: base.patientGender || '',
+
+    // Benefit period checkboxes / info
+    CBX_BP: base.currentPeriod || '',
+    BENEFIT_PERIOD: base.startingBenefitPeriod || '',
+    BENEFIT_PERIOD_1: base.periodStart || '',
+    BENEFIT_PERIOD_2: base.periodEnd || '',
+
+    // Certification type / F2F / Related checkboxes (populated from customData or defaults)
+    CBX_CT: c.CBX_CT || c.certType || '',
+    CBX_F2F: base.f2fRequired || '',
+    CBX_R: c.CBX_R || c.diagnosisRelationship || '',
+
+    // Diagnoses — both underscore and no-underscore variants
+    DIAGNOSIS_1: diagnoses[0]?.name || '',
+    DIAGNOSIS_2: diagnoses[1]?.name || '',
+    DIAGNOSIS_3: diagnoses[2]?.name || '',
+    DIAGNOSIS_4: diagnoses[3]?.name || '',
+    DIAGNOSIS_5: diagnoses[4]?.name || '',
+    DIAGNOSIS_6: diagnoses[5]?.name || '',
+    DIAGNOSIS1: diagnoses[0]?.name || '',
+    DIAGNOSIS2: diagnoses[1]?.name || '',
+
+    // Diagnosis onset dates (Attending CTI)
+    D1_DATE: formatDate(diagnoses[0]?.onsetDate),
+    D2_DATE: formatDate(diagnoses[1]?.onsetDate),
+    D3_DATE: formatDate(diagnoses[2]?.onsetDate),
+    D4_DATE: formatDate(diagnoses[3]?.onsetDate),
+    D5_DATE: formatDate(diagnoses[4]?.onsetDate),
+    D6_DATE: formatDate(diagnoses[5]?.onsetDate),
+
+    // Computed ICD-10
+    CALC_ICD: base.primaryDiagnosisICD10 || '',
+    CALC_AGE: calcAge !== '' ? String(calcAge) : '',
+
+    // Admission / Election
+    ADMISSION: base.admissionDate,
+    ELECTION_DATE: base.electionDate,
+
+    // Cert period dates — CTI uses CD_1/CD_2, Attending CTI uses CDATE1/CDATE2
+    CD_1: base.periodStart || '',
+    CD_2: base.periodEnd || '',
+    CDATE1: base.periodStart || '',
+    CDATE2: base.periodEnd || '',
+
+    // Attending physician
+    PHYS_ATT_NAME: base.attendingPhysicianName,
+    PHYS_ATT_NPI: base.attendingNPI,
+    PHYS_ATT_PHONE: base.attendingPhone,
+
+    // F2F fields
+    F2F_DATE: base.f2fDate,
+    F2F_PHYSICIAN: base.f2fProvider,
+    F2F_NPI: base.f2fProviderNpi,
+    CBX_F2F_ROLE: base.f2fProviderRole || '',
+
+    // Visit date/time
+    SELECT_DATE: base.visitDate || '',
+    SELECT_TIME: c.visitTime || c.SELECT_TIME || '',
+
+    // Location
+    PATIENT_LOCATION: base.patientLocationName || base.patientLocationType || '',
+    PATIENT_ADDRESS: base.patientAddress,
+    PATIENT_PN: c.patientPhone || p.phone || '',
+
+    // Provider fields (Progress Note / Home Visit)
+    PROVIDER: c.clinicianName || c.PROVIDER || '',
+    NPI: c.providerNpi || c.NPI || base.attendingNPI || '',
+    CBX_VT: c.visitType || c.CBX_VT || '',
+    CBX_ROLE: c.clinicianTitle || c.CBX_ROLE || '',
+    CBX_VP: c.visitPurpose || c.CBX_VP || '',
+
+    // AI suggestion placeholder
+    SUGGESTION: c.SUGGESTION || c.suggestion || '',
+  });
+
+  return base;
 }
 
 module.exports = { generatePDF, prepareMergeData };

@@ -52,13 +52,11 @@ async function setupOrganization() {
     // Document Templates (Required for generateCertificationDocs)
     settings: {
       documentTemplates: {
-        '60DAY': '1CkUx8NCYOwNJEDnVkIQGsl_gRZt_AjD_hlW0ZG0AzTw',
-        '90DAY_INITIAL': '1-OFQEG2c2B4v65Rpyr7gn6A3fAqIC4-Qr65BEJWuUTo',
-        '90DAY_SECOND': '1IB9I_BOGwweBZJUtu7XDOKwlghQJvC9MF4XAx6Vkjmk',
-        'ATTEND_CERT': '1H74TZgRCXL4hdoTBdjXwRIVwGi-QjdAX1wXvBGF9Ee8',
-        'PROGRESS_NOTE': '1PObRDB6JVBLvlMgMOw_6owbvucBUJdak58lH2u61YCM',
-        'F2F_ENCOUNTER': '1MRYBd6soKZMhx8Autzegm78FpGF4mi1a9L2Eva7ORaM',
-        'HOME_VISIT_ASSESSMENT': '',
+        'CTI': '1FnxxzzMt3XEc-YH08lY6vRxTTwRInUOvVuWq5jkCC58',
+        'ATTEND_CTI': '1jkHOS-go3-EKo0icVuXNhHmWDFXEcNACpCfkzKXd5LI',
+        'PROGRESS_NOTE': '1f4PK03KzaY_0gWwYD0SDTxE4aV68taxVVZQGpsnnPVA',
+        'PHYSICIAN_HP': '1p7Qoik9VQq0AdHiEtiKOLLsyGV5Xldp9qqe-qOyRJB8',
+        'HOME_VISIT_ASSESSMENT': '15sQKvpwPm8mEC0NG7DWqWprHxhy2Lss1B8WbSg7iY0s',
       }
     },
 

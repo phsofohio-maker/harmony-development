@@ -8,12 +8,11 @@
  */
 
 const admin = require('firebase-admin');
+const serviceAccount = require('../service-account-key.json');
 
-const { initializeApp, applicationDefault } = require('firebase-admin/app');
-initializeApp({
-  credential: applicationDefault(),
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
 });
-// You can now use other services like getFirestore(), etc.
 
 const db = admin.firestore();
 

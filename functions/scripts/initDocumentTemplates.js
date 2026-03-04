@@ -1,13 +1,12 @@
 /**
  * scripts/initDocumentTemplates.js
  * Initialize ALL document template configurations in Firestore
- * 
- * Templates: 60DAY, 90DAY_INITIAL, 90DAY_SECOND, ATTEND_CERT, 
- *            PROGRESS_NOTE, PATIENT_HISTORY, F2F_ENCOUNTER
+ *
+ * Templates: CTI, ATTEND_CTI, PROGRESS_NOTE, PHYSICIAN_HP, HOME_VISIT_ASSESSMENT
  */
 
 const admin = require('firebase-admin');
-const serviceAccount = require('../../service-account-key.json');
+const serviceAccount = require('../service-account-key.json');
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -17,12 +16,12 @@ admin.initializeApp({
 const db = admin.firestore();
 
 const TEMPLATES = {
-  // ============ 60-Day Certification (Period 3+) ============
-  '60DAY': {
-    name: '60-Day Certification',
-    description: 'Subsequent 60-day benefit period certification',
-    documentType: '60DAY',
-    applicablePeriods: ['Period 3', 'Period 4', 'Period 5+'],
+  // ============ CTI Narrative (All Periods) ============
+  'CTI': {
+    name: 'CTI Narrative',
+    description: 'Consolidated certification/recertification narrative for all benefit periods',
+    documentType: 'CTI',
+    applicablePeriods: ['Period 1', 'Period 2', 'Period 3', 'Period 4', 'Period 5+'],
     layout: {
       pageSize: 'LETTER',
       margins: { top: 72, bottom: 72, left: 72, right: 72 },
@@ -36,23 +35,28 @@ const TEMPLATES = {
     sections: [
       {
         type: 'title',
-        content: 'HOSPICE CERTIFICATION/RECERTIFICATION',
+        content: 'HOSPICE CERTIFICATION / RECERTIFICATION',
         style: { fontSize: 16, bold: true, alignment: 'center' }
       },
       {
         type: 'patientInfo',
-        fields: ['name', 'dob', 'mrn', 'currentPeriod'],
+        fields: ['name', 'dob', 'mrn', 'admissionDate', 'currentPeriod', 'diagnosis'],
         style: { fontSize: 11 }
-      },
-      {
-        type: 'paragraph',
-        content: 'I certify that {{patientName}} is terminally ill with a prognosis of six months or less if the illness runs its normal course.',
-        style: { fontSize: 11, marginTop: 20 }
       },
       {
         type: 'benefitPeriod',
         fields: ['periodNumber', 'periodStart', 'periodEnd', 'certificationDue'],
         style: { fontSize: 11 }
+      },
+      {
+        type: 'paragraph',
+        content: 'I certify that {{PATIENT_NAME}} is terminally ill with a medical prognosis of six months or less if the terminal illness runs its normal course.',
+        style: { fontSize: 11, marginTop: 20 }
+      },
+      {
+        type: 'attendingPhysician',
+        fields: ['attendingName', 'npi', 'phone'],
+        style: { fontSize: 11, marginTop: 15 }
       },
       {
         type: 'signatureBlock',
@@ -66,104 +70,11 @@ const TEMPLATES = {
     }
   },
 
-  // ============ 90-Day Initial Certification (Period 1) ============
-  '90DAY_INITIAL': {
-    name: '90-Day Initial Certification',
-    description: 'Initial 90-day benefit period certification',
-    documentType: '90DAY_INITIAL',
-    applicablePeriods: ['Period 1'],
-    layout: {
-      pageSize: 'LETTER',
-      margins: { top: 72, bottom: 72, left: 72, right: 72 },
-      orientation: 'portrait'
-    },
-    header: {
-      includeOrgName: true,
-      includeDate: true,
-      height: 80
-    },
-    sections: [
-      {
-        type: 'title',
-        content: 'INITIAL HOSPICE CERTIFICATION',
-        style: { fontSize: 16, bold: true, alignment: 'center' }
-      },
-      {
-        type: 'patientInfo',
-        fields: ['name', 'dob', 'mrn', 'admissionDate', 'diagnosis'],
-        style: { fontSize: 11 }
-      },
-      {
-        type: 'paragraph',
-        content: 'I certify that {{patientName}} is terminally ill with a medical prognosis of six months or less if the terminal illness runs its normal course. This certification is for the initial 90-day benefit period.',
-        style: { fontSize: 11, marginTop: 20 }
-      },
-      {
-        type: 'attendingPhysician',
-        fields: ['attendingName', 'npi', 'specialty'],
-        style: { fontSize: 11, marginTop: 15 }
-      },
-      {
-        type: 'signatureBlock',
-        signers: ['attendingPhysician', 'hospiceMedicalDirector'],
-        style: { marginTop: 40 }
-      }
-    ],
-    footer: {
-      includePageNumbers: true,
-      content: 'Parrish Health Systems - Confidential'
-    }
-  },
-
-  // ============ 90-Day Second Certification (Period 2) ============
-  '90DAY_SECOND': {
-    name: '90-Day Second Certification',
-    description: 'Second 90-day benefit period certification',
-    documentType: '90DAY_SECOND',
-    applicablePeriods: ['Period 2'],
-    layout: {
-      pageSize: 'LETTER',
-      margins: { top: 72, bottom: 72, left: 72, right: 72 },
-      orientation: 'portrait'
-    },
-    header: {
-      includeOrgName: true,
-      includeDate: true,
-      height: 80
-    },
-    sections: [
-      {
-        type: 'title',
-        content: 'HOSPICE RECERTIFICATION - SECOND BENEFIT PERIOD',
-        style: { fontSize: 16, bold: true, alignment: 'center' }
-      },
-      {
-        type: 'patientInfo',
-        fields: ['name', 'dob', 'mrn', 'currentPeriod'],
-        style: { fontSize: 11 }
-      },
-      {
-        type: 'paragraph',
-        content: 'I certify that {{patientName}} continues to be terminally ill with a prognosis of six months or less. This recertification is for the second 90-day benefit period.',
-        style: { fontSize: 11, marginTop: 20 }
-      },
-      {
-        type: 'signatureBlock',
-        signers: ['hospiceMedicalDirector'],
-        style: { marginTop: 40 }
-      }
-    ],
-    footer: {
-      includePageNumbers: true,
-      content: 'Parrish Health Systems - Confidential'
-    }
-  },
-
-  // ============ Attending Physician Certification (Period 1) ============
-  'ATTEND_CERT': {
-    name: 'Attending Physician Certification',
-    description: 'Certification statement from attending physician',
-    documentType: 'ATTEND_CERT',
+  // ============ Attending Physician CTI (Period 1) ============
+  'ATTEND_CTI': {
+    name: 'Attending Physician CTI',
+    description: 'Attending physician certification statement',
+    documentType: 'ATTEND_CTI',
     applicablePeriods: ['Period 1'],
     layout: {
       pageSize: 'LETTER',
@@ -188,7 +99,7 @@ const TEMPLATES = {
       },
       {
         type: 'paragraph',
-        content: 'I, the undersigned attending physician, certify that {{patientName}} is my patient and is terminally ill with a medical prognosis of life expectancy of six months or less if the terminal illness runs its normal course.',
+        content: 'I, the undersigned attending physician, certify that {{PATIENT_NAME}} is my patient and is terminally ill with a medical prognosis of life expectancy of six months or less if the terminal illness runs its normal course.',
         style: { fontSize: 11, marginTop: 20 }
       },
       {
@@ -307,11 +218,11 @@ const TEMPLATES = {
     }
   },
 
-  // ============ Patient History (Period 1) ============
-  'PATIENT_HISTORY': {
-    name: 'Patient History',
-    description: 'Patient history documentation',
-    documentType: 'PATIENT_HISTORY',
+  // ============ Physician H&P (Period 1) ============
+  'PHYSICIAN_HP': {
+    name: 'Physician H&P',
+    description: 'Physician history and physical examination',
+    documentType: 'PHYSICIAN_HP',
     applicablePeriods: ['Period 1'],
     layout: {
       pageSize: 'LETTER',
@@ -326,13 +237,18 @@ const TEMPLATES = {
     sections: [
       {
         type: 'title',
-        content: 'PATIENT HISTORY AND PHYSICAL',
+        content: 'PHYSICIAN HISTORY AND PHYSICAL',
         style: { fontSize: 16, bold: true, alignment: 'center' }
       },
       {
         type: 'patientInfo',
         fields: ['name', 'dob', 'mrn', 'admissionDate', 'diagnosis'],
         style: { fontSize: 11 }
+      },
+      {
+        type: 'attendingPhysician',
+        fields: ['attendingName', 'npi'],
+        style: { fontSize: 11, marginTop: 15 }
       },
       {
         type: 'paragraph',
@@ -371,7 +287,7 @@ const TEMPLATES = {
       },
       {
         type: 'field',
-        fieldName: 'medications',
+        fieldName: 'allMedications',
         style: { fontSize: 11, marginTop: 5, minHeight: 60 }
       },
       {
@@ -381,7 +297,7 @@ const TEMPLATES = {
       },
       {
         type: 'field',
-        fieldName: 'allergies',
+        fieldName: 'allAllergies',
         style: { fontSize: 11, marginTop: 5 }
       },
       {
@@ -396,7 +312,7 @@ const TEMPLATES = {
       },
       {
         type: 'signatureBlock',
-        signers: ['admittingNurse', 'hospiceMedicalDirector'],
+        signers: ['physician', 'hospiceMedicalDirector'],
         style: { marginTop: 30 }
       }
     ],
@@ -406,12 +322,12 @@ const TEMPLATES = {
     }
   },
 
-  // ============ Face-to-Face Encounter (Period 3+, Readmissions) ============
-  'F2F_ENCOUNTER': {
-    name: 'Face-to-Face Encounter',
-    description: 'F2F encounter documentation for Period 3+ and readmissions',
-    documentType: 'F2F_ENCOUNTER',
-    applicablePeriods: ['Period 3', 'Period 4', 'Period 5+', 'Readmission'],
+  // ============ Home Visit Assessment (Any Visit) ============
+  'HOME_VISIT_ASSESSMENT': {
+    name: 'Home Visit Assessment',
+    description: 'Clinical home visit assessment form',
+    documentType: 'HOME_VISIT_ASSESSMENT',
+    applicablePeriods: ['Period 1', 'Period 2', 'Period 3', 'Period 4', 'Period 5+'],
     layout: {
       pageSize: 'LETTER',
       margins: { top: 72, bottom: 72, left: 72, right: 72 },
@@ -425,7 +341,7 @@ const TEMPLATES = {
     sections: [
       {
         type: 'title',
-        content: 'FACE-TO-FACE ENCOUNTER ATTESTATION',
+        content: 'HOME VISIT ASSESSMENT',
         style: { fontSize: 16, bold: true, alignment: 'center' }
       },
       {
@@ -435,48 +351,63 @@ const TEMPLATES = {
       },
       {
         type: 'paragraph',
-        content: 'In accordance with Medicare regulations (42 CFR §418.22), a face-to-face encounter is required prior to recertification for the third benefit period and every subsequent benefit period.',
-        style: { fontSize: 10, marginTop: 15, italic: true }
+        content: 'Visit Date: {{visitDate}}',
+        style: { fontSize: 11, marginTop: 15 }
       },
       {
         type: 'paragraph',
-        content: 'ENCOUNTER INFORMATION:',
-        style: { fontSize: 11, marginTop: 20, bold: true }
-      },
-      {
-        type: 'paragraph',
-        content: 'A face-to-face encounter was conducted with {{patientName}} on {{f2fDate}} by {{f2fProvider}}.',
-        style: { fontSize: 11, marginTop: 10 }
-      },
-      {
-        type: 'paragraph',
-        content: 'Provider performing encounter: {{f2fProvider}}',
-        style: { fontSize: 11, marginTop: 10 }
-      },
-      {
-        type: 'paragraph',
-        content: 'Provider credentials: {{f2fProviderCredentials}}',
-        style: { fontSize: 11, marginTop: 5 }
-      },
-      {
-        type: 'paragraph',
-        content: 'CLINICAL FINDINGS SUPPORTING TERMINAL PROGNOSIS:',
-        style: { fontSize: 11, marginTop: 20, bold: true }
+        content: 'VITAL SIGNS:',
+        style: { fontSize: 11, marginTop: 15, bold: true }
       },
       {
         type: 'field',
-        fieldName: 'clinicalFindings',
-        style: { fontSize: 11, marginTop: 5, minHeight: 120 }
+        fieldName: 'vitals',
+        style: { fontSize: 11, marginTop: 5, minHeight: 40 }
       },
       {
         type: 'paragraph',
-        content: 'Based on the above clinical findings, I attest that {{patientName}} continues to have a terminal prognosis with a life expectancy of six months or less if the illness runs its normal course.',
-        style: { fontSize: 11, marginTop: 20 }
+        content: 'FUNCTIONAL ASSESSMENT:',
+        style: { fontSize: 11, marginTop: 15, bold: true }
+      },
+      {
+        type: 'field',
+        fieldName: 'functionalAssessment',
+        style: { fontSize: 11, marginTop: 5, minHeight: 60 }
+      },
+      {
+        type: 'paragraph',
+        content: 'SYMPTOM ASSESSMENT:',
+        style: { fontSize: 11, marginTop: 15, bold: true }
+      },
+      {
+        type: 'field',
+        fieldName: 'symptomAssessment',
+        style: { fontSize: 11, marginTop: 5, minHeight: 60 }
+      },
+      {
+        type: 'paragraph',
+        content: 'CARE PLAN:',
+        style: { fontSize: 11, marginTop: 15, bold: true }
+      },
+      {
+        type: 'field',
+        fieldName: 'carePlan',
+        style: { fontSize: 11, marginTop: 5, minHeight: 60 }
+      },
+      {
+        type: 'paragraph',
+        content: 'NARRATIVE NOTES:',
+        style: { fontSize: 11, marginTop: 15, bold: true }
+      },
+      {
+        type: 'field',
+        fieldName: 'narrativeNotes',
+        style: { fontSize: 11, marginTop: 5, minHeight: 80 }
       },
       {
         type: 'signatureBlock',
-        signers: ['f2fProvider', 'hospiceMedicalDirector'],
-        style: { marginTop: 40 }
+        signers: ['clinician'],
+        style: { marginTop: 30 }
       }
     ],
     footer: {
