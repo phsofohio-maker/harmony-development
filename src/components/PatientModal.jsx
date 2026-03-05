@@ -36,7 +36,7 @@ const EMPTY_FORM = {
   // Identifiers
   mbi: '', medicaidNumber: '', admissionNumber: '', ssn: '',
   // Location
-  address: '', locationName: '', locationType: '', institutionName: '',
+  address: '', locationName: '', locationType: '', institutionName: '', knownHazards: '',
   // Admission
   admissionDate: '', startOfCare: '', electionDate: '',
   levelOfCare: '', disasterCode: '',
@@ -115,6 +115,7 @@ const PatientModal = ({ patient, onSave, onDelete, onClose, saving }) => {
       locationName: patient.locationName || '',
       locationType: patient.locationType || '',
       institutionName: patient.institutionName || '',
+      knownHazards: patient.knownHazards || '',
       // Admission
       admissionDate: fmtDate(patient.admissionDate),
       startOfCare: fmtDate(patient.startOfCare),
@@ -373,6 +374,18 @@ const PatientModal = ({ patient, onSave, onDelete, onClose, saving }) => {
                 </div>
                 <div className="form-row">
                   <Field label="Institution Name" name="institutionName" placeholder="If applicable" />
+                </div>
+
+                <SectionTitle>Safety</SectionTitle>
+                <div className="form-group">
+                  <label>Known Hazards</label>
+                  <input
+                    type="text"
+                    name="knownHazards"
+                    value={formData.knownHazards}
+                    onChange={handleChange}
+                    placeholder="e.g., aggressive dog, stairs only, oxygen in use"
+                  />
                 </div>
               </div>
             )}

@@ -217,6 +217,9 @@ export const createPatientSchema = (data) => ({
   locationType: data.locationType || '',
   institutionName: data.institutionName || '',
 
+  // Safety / Hazards
+  knownHazards: data.knownHazards || '',
+
   // Notes
   otherNotes: data.otherNotes || '',
 
@@ -372,6 +375,9 @@ export const docToPatient = (doc) => {
     locationName: data.locationName || '',
     locationType: data.locationType || '',
     institutionName: data.institutionName || '',
+
+    // Safety / Hazards
+    knownHazards: data.knownHazards || '',
 
     // Notes
     otherNotes: data.otherNotes || '',
