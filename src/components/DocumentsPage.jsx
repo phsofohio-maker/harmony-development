@@ -14,14 +14,28 @@ import { getPatients } from '../services/patientService';
 import { formatDate } from '../services/certificationCalculations';
 import { httpsCallable } from 'firebase/functions';
 import { functions, db } from '../lib/firebase';
-import { 
-  collection, 
-  query, 
-  orderBy, 
-  limit, 
+import {
+  collection,
+  query,
+  orderBy,
+  limit,
   getDocs,
-  where 
+  where
 } from 'firebase/firestore';
+import {
+  FileText,
+  Zap,
+  Clock,
+  Library,
+  Loader2,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Download,
+  RefreshCw,
+  ClipboardList,
+  Handshake,
+} from 'lucide-react';
 
 // ============ Document Generation Page ============
 const DocumentsPage = () => {
@@ -256,7 +270,7 @@ const DocumentsPage = () => {
           </div>
           {cti.requiresF2F && (
             <div className="detail-row f2f-alert">
-              <span className="label">⚠️ F2F Required:</span>
+              <span className="label"><AlertCircle size={14} style={{color: '#f59e0b', verticalAlign: 'middle'}} /> F2F Required:</span>
               <span className="value">{selectedPatient.f2fCompleted ? 'Completed' : 'Pending'}</span>
             </div>
           )}
@@ -280,10 +294,10 @@ const DocumentsPage = () => {
     if (!generationStatus) return null;
 
     const iconMap = {
-      info: '⏳',
-      success: '✅',
-      warning: '⚠️',
-      error: '❌'
+      info: <Loader2 size={20} className="spin" />,
+      success: <CheckCircle size={20} style={{color: '#10b981'}} />,
+      warning: <AlertCircle size={20} style={{color: '#f59e0b'}} />,
+      error: <XCircle size={20} style={{color: '#ef4444'}} />
     };
 
     return (
@@ -300,7 +314,7 @@ const DocumentsPage = () => {
                 rel="noopener noreferrer"
                 className="btn btn-sm btn-primary"
               >
-                📥 Download PDF
+                <Download size={14} /> Download PDF
               </a>
               {generationStatus.expiresAt && (
                 <span className="expires-note">
@@ -314,7 +328,7 @@ const DocumentsPage = () => {
             <div className="results-list">
               {generationStatus.results.map((r, idx) => (
                 <div key={idx} className={`result-item ${r.success ? 'success' : 'error'}`}>
-                  {r.success ? '✓' : '✗'} {r.docType.replace(/_/g, ' ')}
+                  {r.success ? <CheckCircle size={14} style={{color: '#10b981'}} /> : <XCircle size={14} style={{color: '#ef4444'}} />} {r.docType.replace(/_/g, ' ')}
                   {r.success && r.data?.downloadUrl && (
                     <a href={r.data.downloadUrl} target="_blank" rel="noopener noreferrer">
                       Download
@@ -361,7 +375,7 @@ const DocumentsPage = () => {
     <div className="documents-page">
       {/* Page Header */}
       <div className="page-header">
-        <h2>📄 Document Generation</h2>
+        <h2><FileText size={22} style={{verticalAlign: 'middle', marginRight: '0.5rem'}} />Document Generation</h2>
         <p className="subtitle">Generate certification documents using stateless PDF generation</p>
       </div>
 
@@ -371,13 +385,13 @@ const DocumentsPage = () => {
           className={`tab-btn ${activeTab === 'generate' ? 'active' : ''}`}
           onClick={() => setActiveTab('generate')}
         >
-          ⚡ Generate
+          <Zap size={16} /> Generate
         </button>
         <button 
           className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
           onClick={() => setActiveTab('history')}
         >
-          🕐 History ({recentDocs.length})
+          <Clock size={16} /> History ({recentDocs.length})
         </button>
       </div>
 
@@ -424,7 +438,7 @@ const DocumentsPage = () => {
                   onClick={handleGenerateAll}
                   disabled={generating || getRequiredDocs().length === 0}
                 >
-                  {generating ? '⏳ Generating...' : `📄 Generate All (${getRequiredDocs().length})`}
+                  {generating ? <><Loader2 size={16} className="spin" /> Generating...</> : <><FileText size={16} /> Generate All ({getRequiredDocs().length})</>}
                 </button>
               </div>
               <div className="card-body">
@@ -439,7 +453,7 @@ const DocumentsPage = () => {
           {/* Template Library */}
           <div className="card">
             <div className="card-header">
-              <h3>📚 Document Templates</h3>
+              <h3><Library size={18} style={{verticalAlign: 'middle', marginRight: '0.375rem'}} />Document Templates</h3>
               <span className="badge">{templates.length} available</span>
             </div>
             <div className="card-body">
@@ -458,7 +472,7 @@ const DocumentsPage = () => {
                         className={`template-card ${!isApplicable ? 'not-applicable' : ''}`}
                       >
                         <div className="template-icon">
-                          {template.documentType?.includes('F2F') ? '🤝' : '📋'}
+                          {template.documentType?.includes('F2F') ? <Handshake size={24} /> : <ClipboardList size={24} />}
                         </div>
                         <div className="template-info">
                           <h4>{template.name}</h4>
@@ -530,7 +544,7 @@ const DocumentsPage = () => {
                             <tr key={doc.id}>
                               <td>
                                 <div className="doc-name">
-                                  <span className="doc-icon">📄</span>
+                                  <span className="doc-icon"><FileText size={16} /></span>
                                   {doc.templateName || doc.documentType}
                                 </div>
                               </td>
@@ -548,7 +562,7 @@ const DocumentsPage = () => {
                               </td>
                               <td>
                                 <span className={`url-status ${expired ? 'expired' : 'active'}`}>
-                                  {expired ? '⚠️ Expired' : '✓ Active'}
+                                  {expired ? <><AlertCircle size={14} /> Expired</> : <><CheckCircle size={14} /> Active</>}
                                 </span>
                               </td>
                               <td>
@@ -559,7 +573,7 @@ const DocumentsPage = () => {
                                     rel="noopener noreferrer"
                                     className="btn btn-sm btn-outline"
                                   >
-                                    📥 Download
+                                    <Download size={14} /> Download
                                   </a>
                                 ) : (
                                   <button
@@ -573,7 +587,7 @@ const DocumentsPage = () => {
                                       });
                                     }}
                                   >
-                                    🔄 Regenerate
+                                    <RefreshCw size={14} /> Regenerate
                                   </button>
                                 )}
                               </td>
@@ -1074,6 +1088,10 @@ const DocumentsPage = () => {
 
         @keyframes spin {
           to { transform: rotate(360deg); }
+        }
+
+        .spin {
+          animation: spin 1s linear infinite;
         }
 
         /* Responsive */
