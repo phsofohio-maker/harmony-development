@@ -29,7 +29,7 @@ const auth = admin.auth();
 const TEST_CONFIG = {
   orgId: 'org_parrish',
   patientId: '8uUbTbb5wFftzAIuxQqG',  // Your patient ID
-  documentType: 'CTI',
+  documentType: '60DAY',
   userEmail: 'kobet@parrishhealthsystems.org',  // Your email
   
   customData: {

@@ -17,7 +17,7 @@ admin.initializeApp({
 const TEST_CONFIG = {
   orgId: 'org_parrish',
   patientId: 'qyn8hdFlNnlt5JozoCt0', // Update with real patient ID
-  documentType: 'CTI',
+  documentType: '60DAY',
   userEmail: 'kobet@parrishhealthsystems.org'
 };
 

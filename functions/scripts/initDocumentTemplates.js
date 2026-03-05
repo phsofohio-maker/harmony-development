@@ -2,7 +2,9 @@
  * scripts/initDocumentTemplates.js
  * Initialize ALL document template configurations in Firestore
  *
- * Templates: CTI, ATTEND_CTI, PROGRESS_NOTE, PHYSICIAN_HP, HOME_VISIT_ASSESSMENT
+ * Canonical template keys (v1.2.1):
+ *   60DAY, 90DAY_INITIAL, 90DAY_SECOND, ATTEND_CERT,
+ *   PROGRESS_NOTE, F2F_ENCOUNTER, HOME_VISIT_ASSESSMENT
  */
 
 const admin = require('firebase-admin');
@@ -16,12 +18,12 @@ admin.initializeApp({
 const db = admin.firestore();
 
 const TEMPLATES = {
-  // ============ CTI Narrative (All Periods) ============
-  'CTI': {
-    name: 'CTI Narrative',
-    description: 'Consolidated certification/recertification narrative for all benefit periods',
-    documentType: 'CTI',
-    applicablePeriods: ['Period 1', 'Period 2', 'Period 3', 'Period 4', 'Period 5+'],
+  // ============ CTI 60-Day Narrative (Period 3+) ============
+  '60DAY': {
+    name: 'CTI 60-Day Narrative',
+    description: 'Certification/recertification narrative for 3rd+ benefit periods (60-day)',
+    documentType: '60DAY',
+    applicablePeriods: ['Period 3', 'Period 4', 'Period 5+'],
     layout: {
       pageSize: 'LETTER',
       margins: { top: 72, bottom: 72, left: 72, right: 72 },
@@ -35,7 +37,7 @@ const TEMPLATES = {
     sections: [
       {
         type: 'title',
-        content: 'HOSPICE CERTIFICATION / RECERTIFICATION',
+        content: 'HOSPICE RECERTIFICATION — 60-DAY',
         style: { fontSize: 16, bold: true, alignment: 'center' }
       },
       {
@@ -70,11 +72,119 @@ const TEMPLATES = {
     }
   },
 
-  // ============ Attending Physician CTI (Period 1) ============
-  'ATTEND_CTI': {
-    name: 'Attending Physician CTI',
+  // ============ CTI 90-Day Initial (Period 1) ============
+  '90DAY_INITIAL': {
+    name: 'CTI 90-Day Initial',
+    description: 'Initial certification narrative for 1st benefit period (90-day)',
+    documentType: '90DAY_INITIAL',
+    applicablePeriods: ['Period 1'],
+    layout: {
+      pageSize: 'LETTER',
+      margins: { top: 72, bottom: 72, left: 72, right: 72 },
+      orientation: 'portrait'
+    },
+    header: {
+      includeOrgName: true,
+      includeDate: true,
+      height: 80
+    },
+    sections: [
+      {
+        type: 'title',
+        content: 'HOSPICE INITIAL CERTIFICATION — 90-DAY',
+        style: { fontSize: 16, bold: true, alignment: 'center' }
+      },
+      {
+        type: 'patientInfo',
+        fields: ['name', 'dob', 'mrn', 'admissionDate', 'currentPeriod', 'diagnosis'],
+        style: { fontSize: 11 }
+      },
+      {
+        type: 'benefitPeriod',
+        fields: ['periodNumber', 'periodStart', 'periodEnd', 'certificationDue'],
+        style: { fontSize: 11 }
+      },
+      {
+        type: 'paragraph',
+        content: 'I certify that {{PATIENT_NAME}} is terminally ill with a medical prognosis of six months or less if the terminal illness runs its normal course.',
+        style: { fontSize: 11, marginTop: 20 }
+      },
+      {
+        type: 'attendingPhysician',
+        fields: ['attendingName', 'npi', 'phone'],
+        style: { fontSize: 11, marginTop: 15 }
+      },
+      {
+        type: 'signatureBlock',
+        signers: ['physician', 'medicalDirector'],
+        style: { marginTop: 40 }
+      }
+    ],
+    footer: {
+      includePageNumbers: true,
+      content: 'Parrish Health Systems - Confidential'
+    }
+  },
+
+  // ============ CTI 90-Day Second (Period 2) ============
+  '90DAY_SECOND': {
+    name: 'CTI 90-Day Second',
+    description: 'Recertification narrative for 2nd benefit period (90-day)',
+    documentType: '90DAY_SECOND',
+    applicablePeriods: ['Period 2'],
+    layout: {
+      pageSize: 'LETTER',
+      margins: { top: 72, bottom: 72, left: 72, right: 72 },
+      orientation: 'portrait'
+    },
+    header: {
+      includeOrgName: true,
+      includeDate: true,
+      height: 80
+    },
+    sections: [
+      {
+        type: 'title',
+        content: 'HOSPICE RECERTIFICATION — 90-DAY (2ND PERIOD)',
+        style: { fontSize: 16, bold: true, alignment: 'center' }
+      },
+      {
+        type: 'patientInfo',
+        fields: ['name', 'dob', 'mrn', 'admissionDate', 'currentPeriod', 'diagnosis'],
+        style: { fontSize: 11 }
+      },
+      {
+        type: 'benefitPeriod',
+        fields: ['periodNumber', 'periodStart', 'periodEnd', 'certificationDue'],
+        style: { fontSize: 11 }
+      },
+      {
+        type: 'paragraph',
+        content: 'I certify that {{PATIENT_NAME}} is terminally ill with a medical prognosis of six months or less if the terminal illness runs its normal course.',
+        style: { fontSize: 11, marginTop: 20 }
+      },
+      {
+        type: 'attendingPhysician',
+        fields: ['attendingName', 'npi', 'phone'],
+        style: { fontSize: 11, marginTop: 15 }
+      },
+      {
+        type: 'signatureBlock',
+        signers: ['physician', 'medicalDirector'],
+        style: { marginTop: 40 }
+      }
+    ],
+    footer: {
+      includePageNumbers: true,
+      content: 'Parrish Health Systems - Confidential'
+    }
+  },
+
+  // ============ Attending Physician Certification ============
+  'ATTEND_CERT': {
+    name: 'Attending Physician Certification',
     description: 'Attending physician certification statement',
-    documentType: 'ATTEND_CTI',
+    documentType: 'ATTEND_CERT',
     applicablePeriods: ['Period 1'],
     layout: {
       pageSize: 'LETTER',
@@ -134,12 +244,12 @@ const TEMPLATES = {
     }
   },
 
-  // ============ Progress Note (Period 2, Period 3+) ============
+  // ============ Progress Note ============
   'PROGRESS_NOTE': {
     name: 'Progress Note',
     description: 'Clinical progress documentation',
     documentType: 'PROGRESS_NOTE',
-    applicablePeriods: ['Period 2', 'Period 3', 'Period 4', 'Period 5+'],
+    applicablePeriods: ['Period 1', 'Period 2', 'Period 3', 'Period 4', 'Period 5+'],
     layout: {
       pageSize: 'LETTER',
       margins: { top: 72, bottom: 72, left: 72, right: 72 },
@@ -218,12 +328,12 @@ const TEMPLATES = {
     }
   },
 
-  // ============ Physician H&P (Period 1) ============
-  'PHYSICIAN_HP': {
-    name: 'Physician H&P',
-    description: 'Physician history and physical examination',
-    documentType: 'PHYSICIAN_HP',
-    applicablePeriods: ['Period 1'],
+  // ============ Face-to-Face Encounter ============
+  'F2F_ENCOUNTER': {
+    name: 'Face-to-Face Encounter',
+    description: 'Face-to-face encounter documentation (required for Period 3+)',
+    documentType: 'F2F_ENCOUNTER',
+    applicablePeriods: ['Period 3', 'Period 4', 'Period 5+'],
     layout: {
       pageSize: 'LETTER',
       margins: { top: 72, bottom: 72, left: 72, right: 72 },
@@ -237,82 +347,42 @@ const TEMPLATES = {
     sections: [
       {
         type: 'title',
-        content: 'PHYSICIAN HISTORY AND PHYSICAL',
+        content: 'FACE-TO-FACE ENCOUNTER',
         style: { fontSize: 16, bold: true, alignment: 'center' }
       },
       {
         type: 'patientInfo',
-        fields: ['name', 'dob', 'mrn', 'admissionDate', 'diagnosis'],
+        fields: ['name', 'dob', 'mrn', 'currentPeriod'],
         style: { fontSize: 11 }
       },
       {
-        type: 'attendingPhysician',
-        fields: ['attendingName', 'npi'],
+        type: 'paragraph',
+        content: 'Encounter Date: {{visitDate}}',
         style: { fontSize: 11, marginTop: 15 }
       },
       {
         type: 'paragraph',
-        content: 'CHIEF COMPLAINT / REASON FOR HOSPICE ADMISSION:',
+        content: 'CLINICAL FINDINGS:',
         style: { fontSize: 11, marginTop: 15, bold: true }
       },
       {
         type: 'field',
-        fieldName: 'chiefComplaint',
-        style: { fontSize: 11, marginTop: 5, minHeight: 40 }
-      },
-      {
-        type: 'paragraph',
-        content: 'HISTORY OF PRESENT ILLNESS:',
-        style: { fontSize: 11, marginTop: 15, bold: true }
-      },
-      {
-        type: 'field',
-        fieldName: 'historyPresentIllness',
+        fieldName: 'clinicalFindings',
         style: { fontSize: 11, marginTop: 5, minHeight: 80 }
       },
       {
         type: 'paragraph',
-        content: 'PAST MEDICAL HISTORY:',
+        content: 'PROGNOSIS NARRATIVE:',
         style: { fontSize: 11, marginTop: 15, bold: true }
       },
       {
         type: 'field',
-        fieldName: 'pastMedicalHistory',
-        style: { fontSize: 11, marginTop: 5, minHeight: 60 }
-      },
-      {
-        type: 'paragraph',
-        content: 'CURRENT MEDICATIONS:',
-        style: { fontSize: 11, marginTop: 15, bold: true }
-      },
-      {
-        type: 'field',
-        fieldName: 'allMedications',
-        style: { fontSize: 11, marginTop: 5, minHeight: 60 }
-      },
-      {
-        type: 'paragraph',
-        content: 'ALLERGIES:',
-        style: { fontSize: 11, marginTop: 15, bold: true }
-      },
-      {
-        type: 'field',
-        fieldName: 'allAllergies',
-        style: { fontSize: 11, marginTop: 5 }
-      },
-      {
-        type: 'paragraph',
-        content: 'FUNCTIONAL STATUS:',
-        style: { fontSize: 11, marginTop: 15, bold: true }
-      },
-      {
-        type: 'field',
-        fieldName: 'functionalStatus',
-        style: { fontSize: 11, marginTop: 5, minHeight: 40 }
+        fieldName: 'prognosisNarrative',
+        style: { fontSize: 11, marginTop: 5, minHeight: 80 }
       },
       {
         type: 'signatureBlock',
-        signers: ['physician', 'hospiceMedicalDirector'],
+        signers: ['f2fProvider'],
         style: { marginTop: 30 }
       }
     ],
@@ -322,7 +392,7 @@ const TEMPLATES = {
     }
   },
 
-  // ============ Home Visit Assessment (Any Visit) ============
+  // ============ Home Visit Assessment ============
   'HOME_VISIT_ASSESSMENT': {
     name: 'Home Visit Assessment',
     description: 'Clinical home visit assessment form',
@@ -421,32 +491,32 @@ async function initTemplates() {
   console.log('═══════════════════════════════════════════════════════');
   console.log('  INITIALIZING DOCUMENT TEMPLATES');
   console.log('═══════════════════════════════════════════════════════\n');
-  
+
   const orgId = 'org_parrish';
   const batch = db.batch();
-  
+
   const templateList = Object.entries(TEMPLATES);
   console.log(`Found ${templateList.length} templates to initialize:\n`);
-  
+
   for (const [templateId, template] of templateList) {
     const ref = db.collection('organizations')
       .doc(orgId)
       .collection('documentTemplates')
       .doc(templateId);
-    
+
     batch.set(ref, {
       ...template,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
-    
+
     const periods = template.applicablePeriods.join(', ');
-    console.log(`  ✓ ${templateId.padEnd(15)} ${template.name}`);
+    console.log(`  ✓ ${templateId.padEnd(25)} ${template.name}`);
     console.log(`    └─ Periods: ${periods}\n`);
   }
-  
+
   await batch.commit();
-  
+
   console.log('═══════════════════════════════════════════════════════');
   console.log(`  ✅ ${templateList.length} TEMPLATES INITIALIZED SUCCESSFULLY`);
   console.log('═══════════════════════════════════════════════════════\n');

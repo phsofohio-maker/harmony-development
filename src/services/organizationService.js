@@ -66,10 +66,12 @@ export const ORG_DEFAULTS = {
   // Document template IDs (Google Docs)
   settings: {
     documentTemplates: {
-      'CTI': '',
-      'ATTEND_CTI': '',
+      '60DAY': '',
+      '90DAY_INITIAL': '',
+      '90DAY_SECOND': '',
+      'ATTEND_CERT': '',
       'PROGRESS_NOTE': '',
-      'PHYSICIAN_HP': '',
+      'F2F_ENCOUNTER': '',
       'HOME_VISIT_ASSESSMENT': '',
     },
   },
