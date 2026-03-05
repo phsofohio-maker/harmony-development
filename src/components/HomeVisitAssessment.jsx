@@ -80,12 +80,12 @@ const ADL_OPTIONS = ['Independent', 'Supervision', 'Limited Assist', 'Extensive 
 const MOBILITY_OPTIONS = ['Ambulatory', 'Ambulatory with Device', 'Wheelchair', 'Bedbound'];
 const VISIT_TYPES = ['Routine', 'PRN', 'Admission', 'Recertification', 'Discharge', 'Follow-Up'];
 
-const HomeVisitAssessment = () => {
+const HomeVisitAssessment = ({ preSelectedPatientId, onComplete }) => {
   const { user, userProfile } = useAuth();
   const orgId = userProfile?.organizationId || user?.customClaims?.orgId || 'org_parrish';
 
   const [patients, setPatients] = useState([]);
-  const [selectedPatientId, setSelectedPatientId] = useState('');
+  const [selectedPatientId, setSelectedPatientId] = useState(preSelectedPatientId || '');
   const [assessment, setAssessment] = useState({ ...EMPTY_ASSESSMENT });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -165,6 +165,9 @@ const HomeVisitAssessment = () => {
       });
 
       setMessage({ type: 'success', text: `Assessment saved (ID: ${visitDoc.id})` });
+
+      // Notify parent (HomeVisitsPage) so it can refresh the visits list
+      onComplete?.();
 
       // Optionally generate PDF
       if (andGenerate) {

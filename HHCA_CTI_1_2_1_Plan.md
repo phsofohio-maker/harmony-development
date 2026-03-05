@@ -64,7 +64,7 @@ These changes address issues found during post-implementation review, organized 
 
 ### **Step 1.1 — Diagnose and Fix `[No content provided]` PDF Bug**
 
-⬜ **Status:** Not started
+✅ **Status:** Complete
 
 **Problem:** Generated Home Visit Assessment PDFs show `[No content provided]` for every section (Vital Signs, Functional Assessment, Symptom Assessment, Care Plan, Narrative Notes). This was observed on MRN 23578 / John Test Smith.
 
@@ -140,7 +140,7 @@ if (assessmentId) {
 
 ### **Step 1.2 — Fix PatientModal Overflow / Scroll**
 
-⬜ **Status:** Not started
+✅ **Status:** Complete
 
 **Problem:** The Edit Patient panel overflows the viewport. Users cannot scroll to see all tab content. The footer may be clipped or unreachable.
 
@@ -195,7 +195,7 @@ if (assessmentId) {
 
 ### **Step 1.3 — Replace Emoji with Lucide Icons on Documents Page**
 
-⬜ **Status:** Not started
+✅ **Status:** Complete
 
 **Problem:** `src/components/DocumentsPage.jsx` uses emoji characters (🕐, 📄, 📚, ⏳, ✅, ❌, etc.) for tab buttons, status indicators, and inline labels. All other pages in the app use Lucide React icons.
 
@@ -252,7 +252,7 @@ import {
 
 ### **Step 1.4 — Delete Legacy Document Template Keys**
 
-⬜ **Status:** Not started
+✅ **Status:** Complete
 
 **Problem:** The codebase may still reference old template keys (`CTI`, `ATTEND_CTI`, `PROGRESS_NOTE`, `PHYSICIAN_HP`, `HOME_VISIT_ASSESSMENT`) from the pre-1.2.0 era. The canonical key set is now defined in `organizationService.js` under `ORG_DEFAULTS.settings.documentTemplates`:
 
@@ -314,7 +314,7 @@ import {
 
 ### **Step 2.1 — Add "Documents" Tab to Settings Page**
 
-⬜ **Status:** Not started
+✅ **Status:** Complete
 
 **Problem:** Organizations need to configure their own Google Doc template links. Currently, template IDs are set via the `setupOrg.js` script or manually in the Firebase console. There's no UI for admins to manage this.
 
@@ -497,7 +497,7 @@ const saveDocTemplates = async () => {
 
 ### **Step 2.2 — Expand Home Visits Page to Assessment Toolkit**
 
-⬜ **Status:** Not started
+✅ **Status:** Complete
 
 **Problem:** The current Home Visits page (`src/components/HomeVisitAssessment.jsx`) is just the assessment form itself. It needs to become a full toolkit/dashboard with patient profile, previous assessments, and a "Start New Assessment" entry point.
 
@@ -625,7 +625,7 @@ Change the `'visits'` case to render `<HomeVisitsPage />` instead of `<HomeVisit
 
 ### **Step 3.1 — Add Google Docs/Drive API to Cloud Functions**
 
-⬜ **Status:** Not started
+✅ **Status:** Complete
 
 **Problem:** The current `generateDocument` Cloud Function uses PDFKit to render PDFs from a code-defined template config. Per Decision Log #2, we're switching to Google Docs API because the templates already exist as Google Docs.
 
@@ -741,7 +741,7 @@ The Firebase service account (`1062012852590-compute@developer.gserviceaccount.c
 
 ### **Step 3.2 — Rewrite `generateDocument` Cloud Function to Use Google Docs**
 
-⬜ **Status:** Not started
+✅ **Status:** Complete
 
 **Problem:** The current `generateDocument` function uses PDFKit via `lib/pdfGenerator.js`. It needs to switch to `lib/googleDocsGenerator.js`.
 
@@ -918,7 +918,7 @@ The old flow looked up a template config object from an in-memory template regis
 
 ### **Step 3.3 — Redesign Documents Page for Assessment-Based Flow**
 
-⬜ **Status:** Not started
+✅ **Status:** Complete
 
 **Problem:** The current `DocumentsPage.jsx` uses the old flow: select patient → pick template from library → generate. It needs to support the assessment-based flow while keeping a manual fallback.
 
@@ -1035,7 +1035,7 @@ const handleGenerateAll = async () => {
 
 ### **Step 4.1 — Remove PDFKit and Old Template Code**
 
-⬜ **Status:** Not started
+✅ **Status:** Complete
 
 **What to do:**
 
@@ -1058,7 +1058,7 @@ const handleGenerateAll = async () => {
 
 ### **Step 4.2 — End-to-End Smoke Test**
 
-⬜ **Status:** Not started
+✅ **Status:** Complete
 
 **Full walkthrough:**
 

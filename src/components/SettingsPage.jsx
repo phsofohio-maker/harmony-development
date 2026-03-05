@@ -16,12 +16,12 @@ import BrandingSettings from './BrandingSettings';
 import TeamManagement from './TeamManagement';
 import PatientImportExport from './PatientImportExport';
 import PhysicianDirectory from './PhysicianDirectory';
-import { 
-  Building2, 
-  Palette, 
-  Bell, 
-  Save, 
-  Loader2, 
+import {
+  Building2,
+  Palette,
+  Bell,
+  Save,
+  Loader2,
   Check,
   AlertCircle,
   Plus,
@@ -29,8 +29,11 @@ import {
   Mail,
   Users,
   Database,
-  Stethoscope
+  Stethoscope,
+  FileText,
+  ExternalLink,
 } from 'lucide-react';
+import { serverTimestamp } from 'firebase/firestore';
 
 const SettingsPage = () => {
   const { user } = useAuth();
@@ -78,6 +81,17 @@ const SettingsPage = () => {
   const [newEmail, setNewEmail] = useState('');
   const [emailError, setEmailError] = useState(null);
 
+  // Document templates state
+  const [docTemplates, setDocTemplates] = useState({
+    '60DAY': '',
+    '90DAY_INITIAL': '',
+    '90DAY_SECOND': '',
+    'ATTEND_CERT': '',
+    'PROGRESS_NOTE': '',
+    'F2F_ENCOUNTER': '',
+    'HOME_VISIT_ASSESSMENT': '',
+  });
+
   // Load settings
   useEffect(() => {
     loadSettings();
@@ -117,6 +131,18 @@ const SettingsPage = () => {
             huvWindowDays: data.compliance?.huvWindowDays ?? 5,
           },
         });
+
+        // Load document templates
+        const templates = data.settings?.documentTemplates || {};
+        setDocTemplates(prev => ({
+          ...prev,
+          ...Object.fromEntries(
+            Object.entries(templates).map(([key, id]) => [
+              key,
+              id ? `https://docs.google.com/document/d/${id}` : ''
+            ])
+          ),
+        }));
       }
     } catch (err) {
       console.error('Error loading settings:', err);
@@ -207,11 +233,57 @@ const SettingsPage = () => {
     }));
   };
 
+  // Document template types
+  const DOCUMENT_TYPES = [
+    { id: '60DAY', label: 'CTI 60-Day Narrative', description: 'Used for 3rd+ benefit period recertifications' },
+    { id: '90DAY_INITIAL', label: 'CTI 90-Day Initial', description: 'Used for 1st benefit period initial certification' },
+    { id: '90DAY_SECOND', label: 'CTI 90-Day Second', description: 'Used for 2nd benefit period recertification' },
+    { id: 'ATTEND_CERT', label: 'Attending Physician CTI', description: 'Attending physician certification statement' },
+    { id: 'PROGRESS_NOTE', label: 'Progress Note', description: 'Standard clinical progress note' },
+    { id: 'F2F_ENCOUNTER', label: 'Face-to-Face Encounter', description: 'F2F encounter documentation' },
+    { id: 'HOME_VISIT_ASSESSMENT', label: 'Physician Home Visit Assessment', description: 'Comprehensive home visit form' },
+  ];
+
+  const isValidGoogleDocUrl = (url) => {
+    if (!url) return true;
+    return /^https:\/\/docs\.google\.com\/document\/d\/[\w-]+/.test(url);
+  };
+
+  const saveDocTemplates = async () => {
+    setSaving(true);
+    try {
+      const templateIds = {};
+      for (const [key, url] of Object.entries(docTemplates)) {
+        if (url) {
+          const match = url.match(/\/document\/d\/([\w-]+)/);
+          templateIds[key] = match ? match[1] : url;
+        } else {
+          templateIds[key] = '';
+        }
+      }
+      await updateDoc(doc(db, 'organizations', orgId), {
+        'settings.documentTemplates': templateIds,
+        updatedAt: serverTimestamp(),
+      });
+      setSaveMessage({ type: 'success', text: 'Document templates saved!' });
+      setTimeout(() => setSaveMessage(null), 3000);
+    } catch (err) {
+      console.error('Error saving templates:', err);
+      setSaveMessage({ type: 'error', text: 'Failed to save templates.' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // User role for permissions
+  const userRole = user?.customClaims?.role || 'viewer';
+
   const tabs = [
     { id: 'general', label: 'General', icon: Building2 },
     { id: 'branding', label: 'Branding', icon: Palette },
     { id: 'team', label: 'Team', icon: Users },
     { id: 'physicians', label: 'Physicians', icon: Stethoscope },
+    { id: 'documents', label: 'Documents', icon: FileText },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'data', label: 'Data', icon: Database },
   ];
@@ -506,6 +578,87 @@ const SettingsPage = () => {
         {/* Physicians Tab */}
         {activeTab === 'physicians' && (
           <PhysicianDirectory />
+        )}
+
+        {/* Documents Tab */}
+        {activeTab === 'documents' && (
+          <div className="settings-section">
+            <div className="section-card">
+              <h2>Document Templates</h2>
+              <p className="section-desc">
+                Link Google Docs templates for each document type. The system will copy these
+                templates and replace placeholders with patient/assessment data during generation.
+              </p>
+
+              {userRole !== 'admin' && userRole !== 'owner' ? (
+                <div className="info-box">
+                  <AlertCircle size={16} />
+                  Only administrators can manage document templates.
+                </div>
+              ) : (
+                <div className="template-list">
+                  {DOCUMENT_TYPES.map(docType => (
+                    <div key={docType.id} className="template-row">
+                      <div className="template-info">
+                        <span className="template-name">{docType.label}</span>
+                        <span className="template-desc">{docType.description}</span>
+                      </div>
+                      <div className="template-input-row">
+                        <input
+                          type="url"
+                          value={docTemplates[docType.id] || ''}
+                          onChange={(e) => setDocTemplates(prev => ({
+                            ...prev,
+                            [docType.id]: e.target.value
+                          }))}
+                          placeholder="https://docs.google.com/document/d/..."
+                          className={`template-input ${
+                            docTemplates[docType.id] && !isValidGoogleDocUrl(docTemplates[docType.id])
+                              ? 'invalid' : ''
+                          }`}
+                        />
+                        {docTemplates[docType.id] && (
+                          <a
+                            href={docTemplates[docType.id]}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn-icon"
+                            title="Open template in new tab"
+                          >
+                            <ExternalLink size={16} />
+                          </a>
+                        )}
+                      </div>
+                      {docTemplates[docType.id] && !isValidGoogleDocUrl(docTemplates[docType.id]) && (
+                        <span className="field-error">
+                          <AlertCircle size={14} />
+                          Enter a valid Google Docs URL
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {(userRole === 'admin' || userRole === 'owner') && (
+              <div className="form-actions">
+                <button className="btn-primary" onClick={saveDocTemplates} disabled={saving}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="spin" size={16} />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save size={16} />
+                      Save Templates
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Notifications Tab */}
@@ -1053,6 +1206,99 @@ const styles = `
 
   .form-row-settings.triple {
     grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  /* Document Templates */
+  .template-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .template-row {
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--color-gray-100);
+  }
+
+  .template-row:last-child {
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  .template-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .template-name {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-gray-900);
+  }
+
+  .template-desc {
+    font-size: var(--font-size-xs);
+    color: var(--color-gray-500);
+  }
+
+  .template-input-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .template-input {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-gray-300);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    font-family: inherit;
+  }
+
+  .template-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-100);
+  }
+
+  .template-input.invalid {
+    border-color: var(--color-error);
+  }
+
+  .template-input.invalid:focus {
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+  }
+
+  .btn-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--color-gray-300);
+    border-radius: var(--radius-md);
+    color: var(--color-gray-500);
+    text-decoration: none;
+    transition: all var(--transition-fast);
+  }
+
+  .btn-icon:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+
+  .info-box {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: var(--color-primary-50, #eff6ff);
+    color: var(--color-primary-dark, #1e40af);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
   }
 
   @media (max-width: 640px) {
