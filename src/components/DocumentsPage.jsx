@@ -1,11 +1,8 @@
 /**
- * DocumentsPage.jsx - Document Generation UI
- * Updated for Stateless PDF Generation (No Google Drive dependency)
- * * Changes from previous version:
- * - Calls 'generateDocument' instead of 'generateCertificationDocs'
- * - Fetches templates from Firestore instead of hardcoded array
- * - Shows URL expiration status
- * - Better error handling and loading states
+ * DocumentsPage.jsx - Assessment-Based Document Generation
+ *
+ * Flow: Patient → Assessment → Smart Doc Selection → Generate
+ * Supports Google Docs API pipeline with PDFKit fallback.
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -26,7 +23,6 @@ import {
   FileText,
   Zap,
   Clock,
-  Library,
   Loader2,
   CheckCircle,
   XCircle,
@@ -35,31 +31,62 @@ import {
   RefreshCw,
   ClipboardList,
   Handshake,
+  ChevronDown,
+  ChevronUp,
+  CheckSquare,
+  Square,
+  Activity,
 } from 'lucide-react';
 
-// ============ Document Generation Page ============
+// ── Document type definitions ──────────────────────────────────────
+const DOCUMENT_TYPES = [
+  { key: '60DAY', label: '60-Day Certification', description: 'Standard recertification (Period 3+)', icon: 'cert' },
+  { key: '90DAY_INITIAL', label: '90-Day Initial Certification', description: 'First benefit period', icon: 'cert' },
+  { key: '90DAY_SECOND', label: '90-Day Second Certification', description: 'Second benefit period', icon: 'cert' },
+  { key: 'ATTEND_CERT', label: 'Attending Certification', description: 'Attending physician certification', icon: 'cert' },
+  { key: 'PROGRESS_NOTE', label: 'Progress Note', description: 'Clinical progress documentation', icon: 'note' },
+  { key: 'F2F_ENCOUNTER', label: 'Face-to-Face Encounter', description: 'F2F encounter documentation', icon: 'f2f' },
+  { key: 'HOME_VISIT_ASSESSMENT', label: 'Home Visit Assessment', description: 'Home visit clinical assessment', icon: 'visit' },
+];
+
+// Smart selection: map visit types to recommended document types
+const VISIT_TYPE_DOC_MAP = {
+  'Routine': ['PROGRESS_NOTE'],
+  'Recertification': ['60DAY', 'ATTEND_CERT', 'PROGRESS_NOTE'],
+  'Initial Assessment': ['90DAY_INITIAL', 'ATTEND_CERT', 'PROGRESS_NOTE', 'HOME_VISIT_ASSESSMENT'],
+  'F2F Visit': ['F2F_ENCOUNTER', 'PROGRESS_NOTE'],
+  'Discharge': ['PROGRESS_NOTE'],
+  'PRN': ['PROGRESS_NOTE'],
+  'Supervisory': ['PROGRESS_NOTE'],
+};
+
 const DocumentsPage = () => {
   const { user, userProfile } = useAuth();
   const orgId = userProfile?.organizationId || 'org_parrish';
 
   // Data state
   const [patients, setPatients] = useState([]);
-  const [templates, setTemplates] = useState([]);
   const [recentDocs, setRecentDocs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   // Selection state
   const [selectedPatientId, setSelectedPatientId] = useState('');
-  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [assessments, setAssessments] = useState([]);
+  const [selectedAssessmentId, setSelectedAssessmentId] = useState('');
+  const [loadingAssessments, setLoadingAssessments] = useState(false);
+
+  // Document selection
+  const [selectedDocTypes, setSelectedDocTypes] = useState(new Set());
 
   // Generation state
   const [generating, setGenerating] = useState(false);
   const [generationStatus, setGenerationStatus] = useState(null);
 
   // View state
-  const [activeTab, setActiveTab] = useState('generate'); // 'generate' | 'history'
+  const [activeTab, setActiveTab] = useState('generate');
   const [patientFilter, setPatientFilter] = useState('');
+  const [showManualSection, setShowManualSection] = useState(false);
 
   // ============ Data Loading ============
   const loadData = useCallback(async () => {
@@ -67,18 +94,8 @@ const DocumentsPage = () => {
       setLoading(true);
       setError(null);
 
-      // Load patients
       const patientsData = await getPatients(orgId, { status: 'active' });
       setPatients(patientsData);
-
-      // Load templates from Firestore
-      const templatesRef = collection(db, 'organizations', orgId, 'documentTemplates');
-      const templatesSnapshot = await getDocs(templatesRef);
-      const templatesData = templatesSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setTemplates(templatesData);
 
       // Load recent documents
       const docsRef = collection(db, 'organizations', orgId, 'generatedDocuments');
@@ -104,133 +121,119 @@ const DocumentsPage = () => {
     loadData();
   }, [loadData]);
 
+  // Load assessments when patient changes
+  useEffect(() => {
+    if (!selectedPatientId) {
+      setAssessments([]);
+      setSelectedAssessmentId('');
+      setSelectedDocTypes(new Set());
+      return;
+    }
+
+    const loadAssessments = async () => {
+      setLoadingAssessments(true);
+      try {
+        const visitsRef = collection(db, 'organizations', orgId, 'patients', selectedPatientId, 'visits');
+        const visitsQuery = query(visitsRef, orderBy('createdAt', 'desc'), limit(10));
+        const snapshot = await getDocs(visitsQuery);
+        const visits = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate(),
+        }));
+        setAssessments(visits);
+      } catch (err) {
+        console.error('Error loading assessments:', err);
+      } finally {
+        setLoadingAssessments(false);
+      }
+    };
+
+    loadAssessments();
+  }, [selectedPatientId, orgId]);
+
+  // Smart-select documents when assessment changes
+  useEffect(() => {
+    if (!selectedAssessmentId) {
+      setSelectedDocTypes(new Set());
+      return;
+    }
+
+    const assessment = assessments.find(a => a.id === selectedAssessmentId);
+    if (!assessment) return;
+
+    const visitType = assessment.visitType || 'Routine';
+    const recommended = VISIT_TYPE_DOC_MAP[visitType] || ['PROGRESS_NOTE'];
+    setSelectedDocTypes(new Set(recommended));
+  }, [selectedAssessmentId, assessments]);
+
   // ============ Computed Values ============
   const selectedPatient = patients.find(p => p.id === selectedPatientId);
-  
-  const getRequiredDocs = () => {
-    if (!selectedPatient?.compliance?.cti) return [];
-    return selectedPatient.compliance.cti.requiredDocuments || [];
-  };
-
-  const getApplicableTemplates = () => {
-    if (!selectedPatient) return templates;
-    const period = selectedPatient.compliance?.cti?.periodShortName || '';
-    return templates.filter(t => {
-      if (!t.applicablePeriods || t.applicablePeriods.length === 0) return true;
-      return t.applicablePeriods.some(p => period.includes(p) || p.includes(period));
-    });
-  };
+  const selectedAssessment = assessments.find(a => a.id === selectedAssessmentId);
 
   const isUrlExpired = (expiresAt) => {
     if (!expiresAt) return true;
     return new Date(expiresAt) < new Date();
   };
 
-  // ============ Document Generation ============
-  const handleGenerateSingle = async (templateId) => {
-    if (!selectedPatient) {
-      setGenerationStatus({
-        type: 'error',
-        message: 'Please select a patient first.'
-      });
-      return;
-    }
-
-    const template = templates.find(t => t.id === templateId);
-    if (!template) return;
-
-    setGenerating(true);
-    setGenerationStatus({
-      type: 'info',
-      message: `Generating ${template.name}...`
-    });
-
-    try {
-      // Call NEW stateless function
-      const generateDocFn = httpsCallable(functions, 'generateDocument');
-      const result = await generateDocFn({
-        patientId: selectedPatient.id,
-        documentType: templateId,
-        customData: {}
-      });
-
-      if (result.data.success) {
-        setGenerationStatus({
-          type: 'success',
-          message: `${template.name} generated successfully!`,
-          downloadUrl: result.data.downloadUrl,
-          fileName: result.data.fileName,
-          expiresAt: result.data.expiresAt
-        });
-        
-        // Reload recent documents
-        await loadData();
+  const toggleDocType = (key) => {
+    setSelectedDocTypes(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
       }
-    } catch (err) {
-      console.error('Document generation error:', err);
-      setGenerationStatus({
-        type: 'error',
-        message: `Failed to generate ${template.name}: ${err.message}`
-      });
-    } finally {
-      setGenerating(false);
-    }
+      return next;
+    });
   };
 
-  const handleGenerateAll = async () => {
+  // ============ Document Generation ============
+  const handleGenerate = async () => {
     if (!selectedPatient) {
-      setGenerationStatus({
-        type: 'error',
-        message: 'Please select a patient first.'
-      });
+      setGenerationStatus({ type: 'error', message: 'Please select a patient first.' });
       return;
     }
 
-    const requiredDocs = getRequiredDocs();
-    if (requiredDocs.length === 0) {
-      setGenerationStatus({
-        type: 'error',
-        message: 'No required documents found for this patient\'s current period.'
-      });
+    if (selectedDocTypes.size === 0) {
+      setGenerationStatus({ type: 'error', message: 'Please select at least one document type.' });
       return;
     }
 
     setGenerating(true);
     setGenerationStatus({
       type: 'info',
-      message: `Generating ${requiredDocs.length} documents...`
+      message: `Generating ${selectedDocTypes.size} document${selectedDocTypes.size > 1 ? 's' : ''}...`
     });
 
     const results = [];
     const generateDocFn = httpsCallable(functions, 'generateDocument');
 
-    for (const docType of requiredDocs) {
+    for (const docType of selectedDocTypes) {
       try {
         const result = await generateDocFn({
           patientId: selectedPatient.id,
           documentType: docType,
+          assessmentId: selectedAssessmentId || undefined,
           customData: {}
         });
-        results.push({
-          docType,
-          success: true,
-          data: result.data
-        });
+        results.push({ docType, success: true, data: result.data });
       } catch (err) {
         console.error(`Error generating ${docType}:`, err);
-        results.push({
-          docType,
-          success: false,
-          error: err.message
-        });
+        results.push({ docType, success: false, error: err.message });
       }
     }
 
     const successCount = results.filter(r => r.success).length;
     setGenerationStatus({
-      type: successCount === requiredDocs.length ? 'success' : 'warning',
-      message: `Generated ${successCount} of ${requiredDocs.length} documents`,
-      results
+      type: successCount === selectedDocTypes.size ? 'success' : successCount > 0 ? 'warning' : 'error',
+      message: successCount === 1 && results.length === 1
+        ? `${results[0].data?.message || 'Document generated successfully!'}`
+        : `Generated ${successCount} of ${selectedDocTypes.size} documents`,
+      results: results.length > 1 ? results : undefined,
+      downloadUrl: results.length === 1 && results[0].success ? results[0].data?.downloadUrl : undefined,
+      fileName: results.length === 1 && results[0].success ? results[0].data?.fileName : undefined,
+      expiresAt: results.length === 1 && results[0].success ? results[0].data?.expiresAt : undefined,
     });
 
     await loadData();
@@ -238,66 +241,14 @@ const DocumentsPage = () => {
   };
 
   // ============ Render Helpers ============
-  const renderPatientSummary = () => {
-    if (!selectedPatient) return null;
-    
-    const cti = selectedPatient.compliance?.cti || {};
-    const requiredDocs = getRequiredDocs();
-
-    return (
-      <div className="patient-summary-card">
-        <div className="patient-header">
-          <h4>{selectedPatient.name}</h4>
-          <span className={`status-badge ${cti.status?.toLowerCase()}`}>
-            {cti.status || 'Unknown'}
-          </span>
-        </div>
-        
-        <div className="patient-details">
-          <div className="detail-row">
-            <span className="label">MRN:</span>
-            <span className="value">{selectedPatient.mrNumber || 'N/A'}</span>
-          </div>
-          <div className="detail-row">
-            <span className="label">Current Period:</span>
-            <span className="value">{cti.periodShortName || 'N/A'}</span>
-          </div>
-          <div className="detail-row">
-            <span className="label">Days Until Cert:</span>
-            <span className={`value ${cti.daysUntilCertEnd <= 5 ? 'urgent' : ''}`}>
-              {cti.daysUntilCertEnd ?? 'N/A'}
-            </span>
-          </div>
-          {cti.requiresF2F && (
-            <div className="detail-row f2f-alert">
-              <span className="label"><AlertCircle size={14} style={{color: '#f59e0b', verticalAlign: 'middle'}} /> F2F Required:</span>
-              <span className="value">{selectedPatient.f2fCompleted ? 'Completed' : 'Pending'}</span>
-            </div>
-          )}
-        </div>
-
-        {requiredDocs.length > 0 && (
-          <div className="required-docs">
-            <h5>Required Documents ({requiredDocs.length}):</h5>
-            <ul>
-              {requiredDocs.map(doc => (
-                <li key={doc}>{doc.replace(/_/g, ' ')}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-    );
-  };
-
   const renderGenerationStatus = () => {
     if (!generationStatus) return null;
 
     const iconMap = {
       info: <Loader2 size={20} className="spin" />,
-      success: <CheckCircle size={20} style={{color: '#10b981'}} />,
-      warning: <AlertCircle size={20} style={{color: '#f59e0b'}} />,
-      error: <XCircle size={20} style={{color: '#ef4444'}} />
+      success: <CheckCircle size={20} style={{ color: '#10b981' }} />,
+      warning: <AlertCircle size={20} style={{ color: '#f59e0b' }} />,
+      error: <XCircle size={20} style={{ color: '#ef4444' }} />
     };
 
     return (
@@ -305,12 +256,12 @@ const DocumentsPage = () => {
         <span className="status-icon">{iconMap[generationStatus.type]}</span>
         <div className="status-content">
           <p className="status-message">{generationStatus.message}</p>
-          
+
           {generationStatus.downloadUrl && (
             <div className="status-actions">
-              <a 
-                href={generationStatus.downloadUrl} 
-                target="_blank" 
+              <a
+                href={generationStatus.downloadUrl}
+                target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-sm btn-primary"
               >
@@ -328,7 +279,8 @@ const DocumentsPage = () => {
             <div className="results-list">
               {generationStatus.results.map((r, idx) => (
                 <div key={idx} className={`result-item ${r.success ? 'success' : 'error'}`}>
-                  {r.success ? <CheckCircle size={14} style={{color: '#10b981'}} /> : <XCircle size={14} style={{color: '#ef4444'}} />} {r.docType.replace(/_/g, ' ')}
+                  {r.success ? <CheckCircle size={14} style={{ color: '#10b981' }} /> : <XCircle size={14} style={{ color: '#ef4444' }} />}
+                  {' '}{DOCUMENT_TYPES.find(d => d.key === r.docType)?.label || r.docType.replace(/_/g, ' ')}
                   {r.success && r.data?.downloadUrl && (
                     <a href={r.data.downloadUrl} target="_blank" rel="noopener noreferrer">
                       Download
@@ -340,12 +292,7 @@ const DocumentsPage = () => {
             </div>
           )}
         </div>
-        <button 
-          className="status-close"
-          onClick={() => setGenerationStatus(null)}
-        >
-          ×
-        </button>
+        <button className="status-close" onClick={() => setGenerationStatus(null)}>×</button>
       </div>
     );
   };
@@ -354,7 +301,7 @@ const DocumentsPage = () => {
   if (loading) {
     return (
       <div className="page-loading">
-        <div className="spinner"></div>
+        <div className="spinner" />
         <p>Loading documents...</p>
       </div>
     );
@@ -364,9 +311,7 @@ const DocumentsPage = () => {
     return (
       <div className="page-error">
         <p>{error}</p>
-        <button onClick={loadData} className="btn btn-primary">
-          Retry
-        </button>
+        <button onClick={loadData} className="btn btn-primary">Retry</button>
       </div>
     );
   }
@@ -375,19 +320,19 @@ const DocumentsPage = () => {
     <div className="documents-page">
       {/* Page Header */}
       <div className="page-header">
-        <h2><FileText size={22} style={{verticalAlign: 'middle', marginRight: '0.5rem'}} />Document Generation</h2>
-        <p className="subtitle">Generate certification documents using stateless PDF generation</p>
+        <h2><FileText size={22} style={{ verticalAlign: 'middle', marginRight: '0.5rem' }} />Document Generation</h2>
+        <p className="subtitle">Select a patient and assessment, then generate documents</p>
       </div>
 
       {/* Tab Navigation */}
       <div className="tab-nav">
-        <button 
+        <button
           className={`tab-btn ${activeTab === 'generate' ? 'active' : ''}`}
           onClick={() => setActiveTab('generate')}
         >
           <Zap size={16} /> Generate
         </button>
-        <button 
+        <button
           className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
           onClick={() => setActiveTab('history')}
         >
@@ -401,7 +346,7 @@ const DocumentsPage = () => {
       {/* Generate Tab */}
       {activeTab === 'generate' && (
         <div className="generate-section">
-          {/* Patient Selection */}
+          {/* Step 1: Patient Selection */}
           <div className="card">
             <div className="card-header">
               <h3>1. Select Patient</h3>
@@ -411,92 +356,188 @@ const DocumentsPage = () => {
                 value={selectedPatientId}
                 onChange={(e) => {
                   setSelectedPatientId(e.target.value);
+                  setSelectedAssessmentId('');
                   setGenerationStatus(null);
                 }}
-                className="patient-select"
+                className="form-select"
                 disabled={generating}
               >
                 <option value="">Choose a patient...</option>
                 {patients.map(p => (
                   <option key={p.id} value={p.id}>
-                    {p.name} • {p.mrNumber || 'No MRN'} • {p.compliance?.cti?.periodShortName || 'N/A'}
+                    {p.name} — {p.mrNumber || 'No MRN'} — {p.compliance?.cti?.periodShortName || 'N/A'}
                   </option>
                 ))}
               </select>
 
-              {renderPatientSummary()}
-            </div>
-          </div>
-
-          {/* Quick Generate */}
-          {selectedPatient && (
-            <div className="card">
-              <div className="card-header">
-                <h3>2. Quick Generate</h3>
-                <button 
-                  className="btn btn-primary"
-                  onClick={handleGenerateAll}
-                  disabled={generating || getRequiredDocs().length === 0}
-                >
-                  {generating ? <><Loader2 size={16} className="spin" /> Generating...</> : <><FileText size={16} /> Generate All ({getRequiredDocs().length})</>}
-                </button>
-              </div>
-              <div className="card-body">
-                <p className="help-text">
-                  Click "Generate All" to create all required documents for {selectedPatient.name}'s 
-                  current certification period, or select individual templates below.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Template Library */}
-          <div className="card">
-            <div className="card-header">
-              <h3><Library size={18} style={{verticalAlign: 'middle', marginRight: '0.375rem'}} />Document Templates</h3>
-              <span className="badge">{templates.length} available</span>
-            </div>
-            <div className="card-body">
-              {templates.length === 0 ? (
-                <div className="empty-state">
-                  <p>No templates configured.</p>
-                  <small>Run <code>node scripts/initDocumentTemplates.js</code> to set up templates.</small>
-                </div>
-              ) : (
-                <div className="templates-grid">
-                  {templates.map(template => {
-                    const isApplicable = !selectedPatient || getApplicableTemplates().some(t => t.id === template.id);
-                    return (
-                      <div 
-                        key={template.id} 
-                        className={`template-card ${!isApplicable ? 'not-applicable' : ''}`}
-                      >
-                        <div className="template-icon">
-                          {template.documentType?.includes('F2F') ? <Handshake size={24} /> : <ClipboardList size={24} />}
-                        </div>
-                        <div className="template-info">
-                          <h4>{template.name}</h4>
-                          <p>{template.description}</p>
-                          <div className="template-periods">
-                            {template.applicablePeriods?.map(period => (
-                              <span key={period} className="period-tag">{period}</span>
-                            ))}
-                          </div>
-                        </div>
-                        <button
-                          className="btn btn-sm btn-outline"
-                          onClick={() => handleGenerateSingle(template.id)}
-                          disabled={!selectedPatient || generating}
-                        >
-                          Generate
-                        </button>
+              {selectedPatient && (
+                <div className="patient-summary-card">
+                  <div className="patient-header">
+                    <h4>{selectedPatient.name}</h4>
+                    <span className={`status-badge ${(selectedPatient.compliance?.cti?.status || '').toLowerCase()}`}>
+                      {selectedPatient.compliance?.cti?.status || 'Unknown'}
+                    </span>
+                  </div>
+                  <div className="patient-details">
+                    <div className="detail-row">
+                      <span className="label">MRN:</span>
+                      <span className="value">{selectedPatient.mrNumber || 'N/A'}</span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="label">Period:</span>
+                      <span className="value">{selectedPatient.compliance?.cti?.periodShortName || 'N/A'}</span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="label">Days Until Cert:</span>
+                      <span className={`value ${(selectedPatient.compliance?.cti?.daysUntilCertEnd ?? 999) <= 5 ? 'urgent' : ''}`}>
+                        {selectedPatient.compliance?.cti?.daysUntilCertEnd ?? 'N/A'}
+                      </span>
+                    </div>
+                    {selectedPatient.compliance?.cti?.requiresF2F && (
+                      <div className="detail-row f2f-alert">
+                        <span className="label"><AlertCircle size={14} style={{ color: '#f59e0b', verticalAlign: 'middle' }} /> F2F:</span>
+                        <span className="value">{selectedPatient.f2fCompleted ? 'Completed' : 'Required'}</span>
                       </div>
-                    );
-                  })}
+                    )}
+                  </div>
                 </div>
               )}
             </div>
           </div>
+
+          {/* Step 2: Assessment Selection */}
+          {selectedPatient && (
+            <div className="card">
+              <div className="card-header">
+                <h3>2. Select Assessment <span className="optional-label">(optional)</span></h3>
+              </div>
+              <div className="card-body">
+                {loadingAssessments ? (
+                  <div className="inline-loading"><Loader2 size={16} className="spin" /> Loading assessments...</div>
+                ) : assessments.length === 0 ? (
+                  <p className="help-text">No assessments found for this patient. You can still generate documents without one.</p>
+                ) : (
+                  <>
+                    <select
+                      value={selectedAssessmentId}
+                      onChange={(e) => setSelectedAssessmentId(e.target.value)}
+                      className="form-select"
+                      disabled={generating}
+                    >
+                      <option value="">No assessment (manual generation)</option>
+                      {assessments.map(a => (
+                        <option key={a.id} value={a.id}>
+                          {a.visitDate || a.createdAt?.toLocaleDateString() || 'Unknown date'} — {a.visitType || 'Visit'} — {a.clinicianName || 'Unknown clinician'}
+                        </option>
+                      ))}
+                    </select>
+
+                    {selectedAssessment && (
+                      <div className="assessment-summary">
+                        <Activity size={16} style={{ color: 'var(--color-primary)' }} />
+                        <div>
+                          <strong>{selectedAssessment.visitType || 'Visit'}</strong> on {selectedAssessment.visitDate || 'N/A'}
+                          {selectedAssessment.clinicianName && <> by {selectedAssessment.clinicianName}</>}
+                          {selectedAssessment.bpSystolic && selectedAssessment.bpDiastolic && (
+                            <span className="vitals-preview"> — BP {selectedAssessment.bpSystolic}/{selectedAssessment.bpDiastolic}</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Document Selection */}
+          {selectedPatient && (
+            <div className="card">
+              <div className="card-header">
+                <h3>3. Select Documents</h3>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleGenerate}
+                  disabled={generating || selectedDocTypes.size === 0}
+                >
+                  {generating
+                    ? <><Loader2 size={16} className="spin" /> Generating...</>
+                    : <><FileText size={16} /> Generate ({selectedDocTypes.size})</>
+                  }
+                </button>
+              </div>
+              <div className="card-body">
+                {selectedAssessment && (
+                  <p className="help-text" style={{ marginBottom: '0.75rem' }}>
+                    Documents auto-selected based on <strong>{selectedAssessment.visitType}</strong> visit type. Adjust as needed.
+                  </p>
+                )}
+
+                <div className="doc-checklist">
+                  {DOCUMENT_TYPES.map(docType => {
+                    const isSelected = selectedDocTypes.has(docType.key);
+                    const IconComponent = docType.icon === 'f2f' ? Handshake
+                      : docType.icon === 'visit' ? Activity
+                      : docType.icon === 'note' ? ClipboardList
+                      : FileText;
+
+                    return (
+                      <button
+                        key={docType.key}
+                        className={`doc-check-item ${isSelected ? 'selected' : ''}`}
+                        onClick={() => toggleDocType(docType.key)}
+                        disabled={generating}
+                      >
+                        <span className="check-icon">
+                          {isSelected ? <CheckSquare size={18} /> : <Square size={18} />}
+                        </span>
+                        <span className="doc-type-icon"><IconComponent size={18} /></span>
+                        <div className="doc-type-info">
+                          <span className="doc-type-label">{docType.label}</span>
+                          <span className="doc-type-desc">{docType.description}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Manual Generation (collapsible) */}
+          {selectedPatient && !selectedAssessmentId && (
+            <div className="card">
+              <button
+                className="card-header collapsible-header"
+                onClick={() => setShowManualSection(!showManualSection)}
+              >
+                <h3>Manual Generation (No Assessment)</h3>
+                {showManualSection ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </button>
+              {showManualSection && (
+                <div className="card-body">
+                  <p className="help-text">
+                    Generate documents without linking to a specific assessment.
+                    Patient demographics and certification data will be populated, but clinical fields
+                    (vitals, ADLs, narrative notes) will be empty.
+                  </p>
+                  <div className="manual-actions">
+                    <button
+                      className="btn btn-outline"
+                      onClick={() => {
+                        const requiredDocs = selectedPatient.compliance?.cti?.requiredDocuments || [];
+                        if (requiredDocs.length > 0) {
+                          setSelectedDocTypes(new Set(requiredDocs));
+                        }
+                      }}
+                    >
+                      <Zap size={14} /> Auto-select Required Docs
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -528,14 +569,15 @@ const DocumentsPage = () => {
                         <th>Document</th>
                         <th>Patient</th>
                         <th>Generated</th>
+                        <th>Source</th>
                         <th>Status</th>
                         <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {recentDocs
-                        .filter(doc => 
-                          !patientFilter || 
+                        .filter(doc =>
+                          !patientFilter ||
                           doc.patientName?.toLowerCase().includes(patientFilter.toLowerCase())
                         )
                         .map(doc => {
@@ -550,24 +592,27 @@ const DocumentsPage = () => {
                               </td>
                               <td>{doc.patientName}</td>
                               <td>
-                                <span className="date">
-                                  {doc.generatedAt?.toLocaleDateString()}
-                                </span>
+                                <span className="date">{doc.generatedAt?.toLocaleDateString()}</span>
                                 <span className="time">
-                                  {doc.generatedAt?.toLocaleTimeString([], { 
-                                    hour: '2-digit', 
-                                    minute: '2-digit' 
-                                  })}
+                                  {doc.generatedAt?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </td>
+                              <td>
+                                <span className={`source-badge ${doc.usedGoogleDocs ? 'gdocs' : 'pdfkit'}`}>
+                                  {doc.usedGoogleDocs ? 'Google Docs' : 'PDFKit'}
                                 </span>
                               </td>
                               <td>
                                 <span className={`url-status ${expired ? 'expired' : 'active'}`}>
-                                  {expired ? <><AlertCircle size={14} /> Expired</> : <><CheckCircle size={14} /> Active</>}
+                                  {expired
+                                    ? <><AlertCircle size={14} /> Expired</>
+                                    : <><CheckCircle size={14} /> Active</>
+                                  }
                                 </span>
                               </td>
                               <td>
                                 {!expired ? (
-                                  <a 
+                                  <a
                                     href={doc.downloadUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
@@ -581,10 +626,6 @@ const DocumentsPage = () => {
                                     onClick={() => {
                                       setSelectedPatientId(doc.patientId);
                                       setActiveTab('generate');
-                                      setGenerationStatus({
-                                        type: 'info',
-                                        message: `Regenerate ${doc.templateName || doc.documentType} for ${doc.patientName}`
-                                      });
                                     }}
                                   >
                                     <RefreshCw size={14} /> Regenerate
@@ -637,6 +678,9 @@ const DocumentsPage = () => {
         }
 
         .tab-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.375rem;
           padding: 0.5rem 1rem;
           border: none;
           background: none;
@@ -647,14 +691,8 @@ const DocumentsPage = () => {
           transition: all var(--transition-normal);
         }
 
-        .tab-btn:hover {
-          background: var(--color-gray-100);
-        }
-
-        .tab-btn.active {
-          background: var(--color-primary);
-          color: white;
-        }
+        .tab-btn:hover { background: var(--color-gray-100); }
+        .tab-btn.active { background: var(--color-primary); color: white; }
 
         /* Cards */
         .card {
@@ -680,29 +718,33 @@ const DocumentsPage = () => {
           color: var(--color-gray-800);
         }
 
-        .card-body {
-          padding: 1.25rem;
-        }
+        .card-body { padding: 1.25rem; }
 
-        .badge {
+        .optional-label {
+          font-weight: 400;
           font-size: var(--font-size-xs);
-          padding: 0.25rem 0.5rem;
-          background: var(--color-gray-200);
-          border-radius: var(--radius-sm);
-          color: var(--color-gray-600);
+          color: var(--color-gray-400);
         }
 
-        /* Patient Select */
-        .patient-select {
+        .collapsible-header {
+          cursor: pointer;
+          border: none;
+          width: 100%;
+          text-align: left;
+        }
+
+        /* Form Select */
+        .form-select {
           width: 100%;
           padding: 0.75rem;
           border: 1px solid var(--color-gray-300);
           border-radius: var(--radius-lg);
           font-size: var(--font-size-sm);
           margin-bottom: 1rem;
+          background: white;
         }
 
-        .patient-select:focus {
+        .form-select:focus {
           outline: none;
           border-color: var(--color-primary);
           box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
@@ -710,8 +752,8 @@ const DocumentsPage = () => {
 
         /* Patient Summary */
         .patient-summary-card {
-          background: var(--color-primary-50); /* #f0f9ff is close to primary-50 */
-          border: 1px solid var(--color-primary-light); /* #bae6fd is close to primary-light */
+          background: var(--color-primary-50, #eff6ff);
+          border: 1px solid var(--color-primary-light, #bfdbfe);
           border-radius: var(--radius-lg);
           padding: 1rem;
         }
@@ -723,10 +765,7 @@ const DocumentsPage = () => {
           margin-bottom: 0.75rem;
         }
 
-        .patient-header h4 {
-          margin: 0;
-          color: #0369a1; /* Keep original unless there's a primary-darker variant in map? Guide says primary-dark is 1e40af. This is slightly different, leaving as is for exact safety or switching to var(--color-primary-dark) if desired. I will keep exact non-mapped values. */
-        }
+        .patient-header h4 { margin: 0; color: var(--color-primary-dark, #1e40af); }
 
         .status-badge {
           padding: 0.25rem 0.5rem;
@@ -743,7 +782,6 @@ const DocumentsPage = () => {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
           gap: 0.5rem;
-          margin-bottom: 1rem;
         }
 
         .detail-row {
@@ -752,18 +790,9 @@ const DocumentsPage = () => {
           font-size: var(--font-size-sm);
         }
 
-        .detail-row .label {
-          color: var(--color-gray-500);
-        }
-
-        .detail-row .value {
-          color: var(--color-gray-800);
-          font-weight: 500;
-        }
-
-        .detail-row .value.urgent {
-          color: #dc2626; /* Not in migration guide */
-        }
+        .detail-row .label { color: var(--color-gray-500); }
+        .detail-row .value { color: var(--color-gray-800); font-weight: 500; }
+        .detail-row .value.urgent { color: #dc2626; }
 
         .f2f-alert {
           grid-column: span 2;
@@ -772,21 +801,104 @@ const DocumentsPage = () => {
           border-radius: var(--radius-sm);
         }
 
-        .required-docs h5 {
-          margin: 0 0 0.5rem 0;
-          font-size: 0.8125rem;
-          color: var(--color-gray-600);
+        /* Assessment Summary */
+        .assessment-summary {
+          display: flex;
+          align-items: center;
+          gap: 0.625rem;
+          padding: 0.75rem;
+          background: var(--color-gray-50);
+          border-radius: var(--radius-md);
+          font-size: var(--font-size-sm);
+          color: var(--color-gray-700);
         }
 
-        .required-docs ul {
-          margin: 0;
-          padding-left: 1.25rem;
-          font-size: 0.8125rem;
+        .vitals-preview {
+          color: var(--color-gray-400);
+          font-size: var(--font-size-xs);
+        }
+
+        .inline-loading {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          color: var(--color-gray-500);
+          font-size: var(--font-size-sm);
+          padding: 0.5rem 0;
+        }
+
+        /* Document Checklist */
+        .doc-checklist {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .doc-check-item {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 0.75rem 1rem;
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-lg);
+          background: white;
+          cursor: pointer;
+          transition: all var(--transition-fast, 0.15s ease);
+          text-align: left;
+          width: 100%;
+        }
+
+        .doc-check-item:hover {
+          border-color: var(--color-primary);
+          background: var(--color-primary-50, #eff6ff);
+        }
+
+        .doc-check-item.selected {
+          border-color: var(--color-primary);
+          background: var(--color-primary-50, #eff6ff);
+        }
+
+        .doc-check-item:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .check-icon {
+          color: var(--color-gray-400);
+          display: flex;
+          flex-shrink: 0;
+        }
+
+        .doc-check-item.selected .check-icon {
+          color: var(--color-primary);
+        }
+
+        .doc-type-icon {
+          color: var(--color-gray-400);
+          display: flex;
+          flex-shrink: 0;
+        }
+
+        .doc-type-info {
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+        }
+
+        .doc-type-label {
+          font-size: var(--font-size-sm);
+          font-weight: 500;
           color: var(--color-gray-800);
         }
 
-        .required-docs li {
-          margin-bottom: 0.25rem;
+        .doc-type-desc {
+          font-size: var(--font-size-xs);
+          color: var(--color-gray-500);
+        }
+
+        /* Manual section */
+        .manual-actions {
+          margin-top: 0.75rem;
         }
 
         /* Status Banner */
@@ -799,34 +911,16 @@ const DocumentsPage = () => {
           margin-bottom: 1rem;
         }
 
-        .status-banner.info { background: var(--color-primary-50); border: 1px solid var(--color-primary-light); }
-        .status-banner.success { background: var(--color-success-light); border: 1px solid #bbf7d0; } /* border not in map */
+        .status-banner.info { background: var(--color-primary-50, #eff6ff); border: 1px solid var(--color-primary-light, #bfdbfe); }
+        .status-banner.success { background: var(--color-success-light); border: 1px solid #bbf7d0; }
         .status-banner.warning { background: #fffbeb; border: 1px solid #fde68a; }
         .status-banner.error { background: var(--color-error-light); border: 1px solid #fecaca; }
 
-        .status-icon {
-          font-size: var(--font-size-xl);
-        }
-
-        .status-content {
-          flex: 1;
-        }
-
-        .status-message {
-          margin: 0 0 0.5rem 0;
-          font-weight: 500;
-        }
-
-        .status-actions {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-        }
-
-        .expires-note {
-          font-size: var(--font-size-xs);
-          color: var(--color-gray-500);
-        }
+        .status-icon { display: flex; }
+        .status-content { flex: 1; }
+        .status-message { margin: 0 0 0.5rem 0; font-weight: 500; }
+        .status-actions { display: flex; align-items: center; gap: 1rem; }
+        .expires-note { font-size: var(--font-size-xs); color: var(--color-gray-500); }
 
         .status-close {
           background: none;
@@ -838,10 +932,7 @@ const DocumentsPage = () => {
           line-height: 1;
         }
 
-        .results-list {
-          margin-top: 0.75rem;
-          font-size: var(--font-size-sm);
-        }
+        .results-list { margin-top: 0.75rem; font-size: var(--font-size-sm); }
 
         .result-item {
           display: flex;
@@ -852,78 +943,20 @@ const DocumentsPage = () => {
 
         .result-item.success { color: var(--color-success-dark); }
         .result-item.error { color: var(--color-error-dark); }
+        .result-item a { margin-left: auto; color: var(--color-primary); font-size: var(--font-size-xs); }
+        .error-msg { margin-left: auto; font-size: var(--font-size-xs); color: #dc2626; }
 
-        .result-item a {
-          margin-left: auto;
-          color: var(--color-primary);
+        /* Source badge */
+        .source-badge {
+          display: inline-block;
+          padding: 0.125rem 0.5rem;
+          border-radius: var(--radius-sm);
           font-size: var(--font-size-xs);
+          font-weight: 500;
         }
 
-        .error-msg {
-          margin-left: auto;
-          font-size: var(--font-size-xs);
-          color: #dc2626;
-        }
-
-        /* Templates Grid */
-        .templates-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-          gap: 1rem;
-        }
-
-        .template-card {
-          display: flex;
-          align-items: flex-start;
-          gap: 0.75rem;
-          padding: 1rem;
-          border: 1px solid var(--border-color);
-          border-radius: var(--radius-lg);
-          transition: all var(--transition-normal);
-        }
-
-        .template-card:hover {
-          border-color: var(--color-primary);
-          box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
-        }
-
-        .template-card.not-applicable {
-          opacity: 0.5;
-        }
-
-        .template-icon {
-          font-size: 1.5rem;
-        }
-
-        .template-info {
-          flex: 1;
-        }
-
-        .template-info h4 {
-          margin: 0 0 0.25rem 0;
-          font-size: var(--font-size-sm);
-          color: var(--color-gray-800);
-        }
-
-        .template-info p {
-          margin: 0 0 0.5rem 0;
-          font-size: var(--font-size-xs);
-          color: var(--color-gray-500);
-        }
-
-        .template-periods {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.25rem;
-        }
-
-        .period-tag {
-          font-size: 0.625rem;
-          padding: 0.125rem 0.375rem;
-          background: var(--color-gray-100);
-          border-radius: 3px;
-          color: var(--color-gray-600);
-        }
+        .source-badge.gdocs { background: #dbeafe; color: #1d4ed8; }
+        .source-badge.pdfkit { background: var(--color-gray-100); color: var(--color-gray-600); }
 
         /* History Table */
         .filter-input {
@@ -934,9 +967,7 @@ const DocumentsPage = () => {
           width: 200px;
         }
 
-        .docs-table-wrapper {
-          overflow-x: auto;
-        }
+        .docs-table-wrapper { overflow-x: auto; }
 
         .docs-table {
           width: 100%;
@@ -958,42 +989,22 @@ const DocumentsPage = () => {
           border-bottom: 1px solid var(--border-color);
         }
 
-        .doc-name {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
+        .doc-name { display: flex; align-items: center; gap: 0.5rem; }
 
-        .doc-icon {
-          font-size: var(--font-size-base);
-        }
-
-        .docs-table .date {
-          display: block;
-          color: var(--color-gray-800);
-        }
-
-        .docs-table .time {
-          display: block;
-          font-size: var(--font-size-xs);
-          color: var(--color-gray-500);
-        }
+        .docs-table .date { display: block; color: var(--color-gray-800); }
+        .docs-table .time { display: block; font-size: var(--font-size-xs); color: var(--color-gray-500); }
 
         .url-status {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.25rem;
           padding: 0.25rem 0.5rem;
           border-radius: var(--radius-sm);
           font-size: var(--font-size-xs);
         }
 
-        .url-status.active {
-          background: var(--color-success-light);
-          color: var(--color-success-dark);
-        }
-
-        .url-status.expired {
-          background: var(--color-warning-light);
-          color: var(--color-warning-dark);
-        }
+        .url-status.active { background: var(--color-success-light); color: var(--color-success-dark); }
+        .url-status.expired { background: var(--color-warning-light); color: var(--color-warning-dark); }
 
         /* Buttons */
         .btn {
@@ -1010,19 +1021,9 @@ const DocumentsPage = () => {
           text-decoration: none;
         }
 
-        .btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .btn-primary {
-          background: var(--color-primary);
-          color: white;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-          background: var(--color-primary-hover);
-        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background: var(--color-primary); color: white; }
+        .btn-primary:hover:not(:disabled) { background: var(--color-primary-hover); }
 
         .btn-outline {
           background: white;
@@ -1035,36 +1036,21 @@ const DocumentsPage = () => {
           color: var(--color-primary);
         }
 
-        .btn-sm {
-          padding: 0.375rem 0.75rem;
-          font-size: 0.8125rem;
-        }
+        .btn-sm { padding: 0.375rem 0.75rem; font-size: 0.8125rem; }
 
-        /* Help text */
         .help-text {
           color: var(--color-gray-500);
           font-size: var(--font-size-sm);
           margin: 0;
         }
 
-        /* Empty state */
         .empty-state {
           text-align: center;
           padding: 2rem;
           color: var(--color-gray-500);
         }
 
-        .empty-state small {
-          display: block;
-          margin-top: 0.5rem;
-        }
-
-        .empty-state code {
-          background: var(--color-gray-100);
-          padding: 0.125rem 0.375rem;
-          border-radius: 3px;
-          font-size: var(--font-size-xs);
-        }
+        .empty-state small { display: block; margin-top: 0.5rem; }
 
         /* Loading */
         .page-loading, .page-error {
@@ -1086,27 +1072,13 @@ const DocumentsPage = () => {
           margin-bottom: 1rem;
         }
 
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-
-        .spin {
-          animation: spin 1s linear infinite;
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spin { animation: spin 1s linear infinite; }
 
         /* Responsive */
         @media (max-width: 768px) {
-          .documents-page {
-            padding: 1rem;
-          }
-
-          .patient-details {
-            grid-template-columns: 1fr;
-          }
-
-          .templates-grid {
-            grid-template-columns: 1fr;
-          }
+          .documents-page { padding: 1rem; }
+          .patient-details { grid-template-columns: 1fr; }
 
           .card-header {
             flex-direction: column;
@@ -1114,9 +1086,7 @@ const DocumentsPage = () => {
             gap: 0.75rem;
           }
 
-          .filter-input {
-            width: 100%;
-          }
+          .filter-input { width: 100%; }
         }
       `}</style>
     </div>
