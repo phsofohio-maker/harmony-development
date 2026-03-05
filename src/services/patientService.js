@@ -195,6 +195,7 @@ export const createPatientSchema = (data) => ({
     name: d.name || '',
     icd10: d.icd10 || '',
     relationship: d.relationship || 'Terminal',
+    onsetDate: d.onsetDate || '',
   })) : [],
   medications: Array.isArray(data.medications) ? data.medications.map(m => ({
     name: m.name || '',
@@ -210,6 +211,9 @@ export const createPatientSchema = (data) => ({
   })) : [],
   nkda: data.nkda || false,
   nfka: data.nfka || false,
+
+  // Contact
+  patientPhone: data.patientPhone || '',
 
   // Location
   address: data.address || '',
@@ -366,6 +370,9 @@ export const docToPatient = (doc) => {
     })) : [],
     nkda: data.nkda || false,
     nfka: data.nfka || false,
+
+    // Contact
+    patientPhone: data.patientPhone || '',
 
     // Location
     address: data.address || '',

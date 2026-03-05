@@ -57,11 +57,15 @@ service cloud.firestore {
         allow create, update: if isOrgStaff(orgId);
         allow delete: if isOrgAdmin(orgId);
 
-        // ── Visits sub-collection (Home Visit Assessments) ──
+        // ── Visits / Assessments sub-collection ──────────────
+        // Direct delete is blocked — use soft delete (status: 'deleted')
         match /visits/{visitId} {
           allow read: if isOrgStaff(orgId);
-          allow create, update: if isOrgStaff(orgId);
-          allow delete: if isOrgAdmin(orgId);
+          allow create: if isOrgStaff(orgId)
+                        && request.resource.data.organizationId == orgId;
+          allow update: if isOrgStaff(orgId)
+                        && resource.data.organizationId == orgId;
+          allow delete: if false;
         }
       }
 
