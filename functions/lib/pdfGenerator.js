@@ -12,7 +12,7 @@ const PDFDocument = require('pdfkit');
  * Generate a PDF document from template config and patient data
  * Returns a Buffer containing the PDF
  */
-async function generatePDF(templateConfig, patientData, orgData, customData = {}) {
+async function generatePDF(templateConfig, patientData, orgData, customData = {}, assessmentData = null) {
   return new Promise((resolve, reject) => {
     try {
       const chunks = [];
@@ -39,7 +39,7 @@ async function generatePDF(templateConfig, patientData, orgData, customData = {}
       doc.on('error', reject);
 
       // Build comprehensive merge context from all patient/org fields
-      const mergeContext = prepareMergeData(patientData, orgData, customData);
+      const mergeContext = prepareMergeData(patientData, orgData, customData, assessmentData);
 
       // Render header
       renderHeader(doc, templateConfig.header, mergeContext);
@@ -434,10 +434,11 @@ function formatDate(dateValue) {
  * Combines patient data, org data, and visit customData into a flat
  * dictionary of ~107 keys for template merge field resolution.
  */
-function prepareMergeData(patientData, orgData, customData = {}) {
+function prepareMergeData(patientData, orgData, customData = {}, assessmentData = null) {
   const p = patientData || {};
   const o = orgData || {};
   const c = customData || {};
+  const a = assessmentData || {};
 
   // Helper: safely access nested physician object or legacy string
   const ap = typeof p.attendingPhysician === 'object' ? p.attendingPhysician : {};
@@ -670,21 +671,80 @@ function prepareMergeData(patientData, orgData, customData = {}) {
     F2F_NPI: base.f2fProviderNpi,
     CBX_F2F_ROLE: base.f2fProviderRole || '',
 
-    // Visit date/time
-    SELECT_DATE: base.visitDate || '',
-    SELECT_TIME: c.visitTime || c.SELECT_TIME || '',
+    // Visit date/time — assessment overrides customData
+    SELECT_DATE: formatDate(a.visitDate) || base.visitDate || '',
+    SELECT_TIME: a.visitTime || c.visitTime || c.SELECT_TIME || '',
 
     // Location
     PATIENT_LOCATION: base.patientLocationName || base.patientLocationType || '',
     PATIENT_ADDRESS: base.patientAddress,
     PATIENT_PN: c.patientPhone || p.phone || '',
 
-    // Provider fields (Progress Note / Home Visit)
-    PROVIDER: c.clinicianName || c.PROVIDER || '',
-    NPI: c.providerNpi || c.NPI || base.attendingNPI || '',
-    CBX_VT: c.visitType || c.CBX_VT || '',
-    CBX_ROLE: c.clinicianTitle || c.CBX_ROLE || '',
-    CBX_VP: c.visitPurpose || c.CBX_VP || '',
+    // Provider fields (Progress Note / Home Visit) — assessment overrides customData
+    PROVIDER: a.clinicianName || c.clinicianName || c.PROVIDER || '',
+    NPI: a.clinicianNpi || c.providerNpi || c.NPI || base.attendingNPI || '',
+    CBX_VT: a.visitType || c.visitType || c.CBX_VT || '',
+    CBX_ROLE: a.clinicianTitle || c.clinicianTitle || c.CBX_ROLE || '',
+    CBX_VP: a.visitPurpose || c.visitPurpose || c.CBX_VP || '',
+
+    // ── Tier 2: Visit-level fields from assessment ────────────────
+    TIME_IN: a.visitTime || a.timeIn || c.visitTime || '',
+    TIME_OUT: a.timeOut || c.timeOut || '',
+    VISIT_TYPE: a.visitType || c.visitType || '',
+    PROVIDER_NAME: a.clinicianName || c.clinicianName || '',
+    PROVIDER_NPI: a.clinicianNpi || c.providerNpi || '',
+    PROVIDER_TITLE: a.clinicianTitle || c.clinicianTitle || '',
+
+    // ── Tier 3: Clinical data from assessment ─────────────────────
+    // Vitals
+    VITALS_BP: a.bpSystolic && a.bpDiastolic ? `${a.bpSystolic}/${a.bpDiastolic}` : (c.VITALS_BP || ''),
+    VITALS_HR: a.heartRate || c.VITALS_HR || '',
+    VITALS_RESP: a.respiratoryRate || c.VITALS_RESP || '',
+    VITALS_TEMP: a.temperature || c.VITALS_TEMP || '',
+    VITALS_O2: a.o2Saturation || c.VITALS_O2 || '',
+    WEIGHT_CURRENT: a.weight || c.WEIGHT_CURRENT || '',
+
+    // Pain
+    PAIN_SCORE: a.painLevel || c.PAIN_SCORE || '',
+    PAIN_GOAL: a.painGoal || c.PAIN_GOAL || '',
+    CBX_PAIN_RELIEF: a.painManaged != null ? (a.painManaged ? '☑ Yes  ☐ No' : '☐ Yes  ☑ No') : '',
+
+    // Functional status
+    PPS_CURRENT: a.performanceScore || c.PPS_CURRENT || '',
+    ADL_SCORE_CURRENT: a.adlScoreCurrent || c.ADL_SCORE_CURRENT || '',
+    MOBILITY_STATUS: a.mobilityStatus || c.MOBILITY_STATUS || '',
+    FALL_RISK: a.fallRisk || c.FALL_RISK || '',
+
+    // ADL details
+    ADL_BATHING: a.adlBathing || '',
+    ADL_DRESSING: a.adlDressing || '',
+    ADL_TOILETING: a.adlToileting || '',
+    ADL_TRANSFERRING: a.adlTransferring || '',
+    ADL_FEEDING: a.adlFeeding || '',
+
+    // Symptoms
+    SYMPTOM_PAIN: a.symptoms?.pain ? 'Yes' : 'No',
+    SYMPTOM_NAUSEA: a.symptoms?.nausea ? 'Yes' : 'No',
+    SYMPTOM_DYSPNEA: a.symptoms?.dyspnea ? 'Yes' : 'No',
+    SYMPTOM_ANXIETY: a.symptoms?.anxiety ? 'Yes' : 'No',
+    SYMPTOM_FATIGUE: a.symptoms?.fatigue ? 'Yes' : 'No',
+    SYMPTOM_CONSTIPATION: a.symptoms?.constipation ? 'Yes' : 'No',
+    SYMPTOM_EDEMA: a.symptoms?.edema ? 'Yes' : 'No',
+    SYMPTOM_SKIN_ISSUES: a.symptoms?.skinIssues ? 'Yes' : 'No',
+    SYMPTOM_NOTES: a.symptomNotes || c.SYMPTOM_NOTES || '',
+
+    // Narratives / clinical notes
+    EXAM_FINDINGS_NARRATIVE: a.examFindingsNarrative || c.EXAM_FINDINGS_NARRATIVE || '',
+    HPI_NARRATIVE: a.narrativeNotes || c.HPI_NARRATIVE || '',
+    CLINICAL_NARRATIVE: a.narrativeNotes || c.CLINICAL_NARRATIVE || '',
+
+    // Care plan
+    CBX_MED_CHANGES: a.medicationsReviewed != null ? (a.medicationsReviewed ? '☑ Reviewed  ☐ No Changes' : '☐ Reviewed  ☑ No Changes') : '',
+    MED_CHANGE_DETAILS: a.planChanges || c.MED_CHANGE_DETAILS || '',
+    ORDERS_DME: a.interventions || c.ORDERS_DME || '',
+    GOALS_REVIEWED: a.goalsReviewed ? 'Yes' : 'No',
+    EDUCATION_PROVIDED: a.educationProvided || '',
+    NEXT_VISIT_DATE: formatDate(a.nextVisitDate),
 
     // AI suggestion placeholder
     SUGGESTION: c.SUGGESTION || c.suggestion || '',

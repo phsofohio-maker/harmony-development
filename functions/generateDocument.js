@@ -19,7 +19,7 @@ exports.generateDocument = onCall({
   const storage = getStorage();
 
   // Extract request data
-  const { patientId, documentType, customData = {} } = request.data;
+  const { patientId, documentType, assessmentId, customData = {} } = request.data;
   const userId = request.auth?.uid;
   const orgId = request.auth?.token?.orgId;
 
@@ -53,6 +53,25 @@ exports.generateDocument = onCall({
     }
     const patient = { id: patientDoc.id, ...patientDoc.data() };
     console.log(`Patient: ${patient.name}`);
+
+    // 1b. Fetch assessment data (if assessmentId provided)
+    let assessmentData = null;
+    if (assessmentId) {
+      console.log(`Fetching assessment: ${assessmentId}`);
+      const assessmentDoc = await db.collection('organizations')
+        .doc(orgId)
+        .collection('patients')
+        .doc(patientId)
+        .collection('visits')
+        .doc(assessmentId)
+        .get();
+      if (assessmentDoc.exists) {
+        assessmentData = { id: assessmentDoc.id, ...assessmentDoc.data() };
+        console.log(`Assessment loaded: ${assessmentData.visitDate || 'no date'}, type: ${assessmentData.visitType || 'unknown'}`);
+      } else {
+        console.warn(`Assessment ${assessmentId} not found — proceeding without assessment data`);
+      }
+    }
 
     // 2. Fetch template configuration (or use generic fallback)
     console.log(`Fetching template: ${documentType}`);
@@ -94,7 +113,7 @@ exports.generateDocument = onCall({
 
     // 4. Generate PDF (stateless - no Drive!)
     console.log('Generating PDF...');
-    const pdfBuffer = await generatePDF(templateConfig, patient, orgData, customData);
+    const pdfBuffer = await generatePDF(templateConfig, patient, orgData, customData, assessmentData);
     console.log(`PDF generated: ${pdfBuffer.length} bytes`);
 
     // 5. Upload to Firebase Cloud Storage
@@ -142,6 +161,7 @@ exports.generateDocument = onCall({
         fileSize: pdfBuffer.length,
         generatedBy: userId,
         generatedAt: Timestamp.now(),
+        assessmentId: assessmentId || null,
         metadata: customData
       });
 
