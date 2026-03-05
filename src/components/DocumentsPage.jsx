@@ -2,7 +2,7 @@
  * DocumentsPage.jsx - Assessment-Based Document Generation
  *
  * Flow: Patient → Assessment → Smart Doc Selection → Generate
- * Supports Google Docs API pipeline with PDFKit fallback.
+ * Uses Google Docs API for document generation.
  */
 
 import { useState, useEffect, useCallback } from 'react';

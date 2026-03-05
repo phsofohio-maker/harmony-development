@@ -21,8 +21,8 @@ const db = getFirestore();
 
 /**
  * Generate a document for a patient.
- * Uses the stateless Cloud Function. If the template is not found,
- * falls back to a generic layout with all available merge data.
+ * Calls the Cloud Function which uses Google Docs API for generation.
+ * Requires the document template to be configured in Settings → Documents.
  */
 export async function generateDocument(patientId, documentType, customData = {}) {
   try {
@@ -38,29 +38,12 @@ export async function generateDocument(patientId, documentType, customData = {})
   } catch (error) {
     console.error('Error generating document:', error);
 
-    // Parse Firebase function errors
     if (error.code === 'functions/permission-denied') {
       throw new Error('You do not have permission to generate documents.');
     }
 
-    // Fallback: if template not found, retry with useGenericTemplate flag
-    if (error.code === 'functions/not-found' || error.message?.includes('Template not found')) {
-      console.warn(`Template "${documentType}" not found — retrying with generic layout`);
-      try {
-        const generateDocFn = httpsCallable(functions, 'generateDocument');
-        const fallback = await generateDocFn({
-          patientId,
-          documentType,
-          customData: {
-            ...customData,
-            useGenericTemplate: true,
-          },
-        });
-        return fallback.data;
-      } catch (fallbackErr) {
-        console.error('Generic fallback also failed:', fallbackErr);
-        throw new Error(`Template "${documentType}" not configured and generic fallback failed.`);
-      }
+    if (error.code === 'functions/failed-precondition') {
+      throw new Error(error.message || `Template "${documentType}" not configured. Go to Settings → Documents to add it.`);
     }
 
     throw new Error(error.message || 'Failed to generate document');

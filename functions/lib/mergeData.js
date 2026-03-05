@@ -1,414 +1,17 @@
 /**
- * functions/lib/pdfGenerator.js
- * Stateless PDF generation using PDFKit
- * NO Google Drive dependency
- * 
- * FIXED: Removed switchToPage() which requires bufferPages mode
+ * functions/lib/mergeData.js
+ * Merge data preparation for document generation.
+ *
+ * Combines patient data, org data, custom data, and assessment data
+ * into a flat key-value dictionary for Google Docs template merge fields.
  */
 
-const PDFDocument = require('pdfkit');
-
 /**
- * Generate a PDF document from template config and patient data
- * Returns a Buffer containing the PDF
- */
-async function generatePDF(templateConfig, patientData, orgData, customData = {}, assessmentData = null) {
-  return new Promise((resolve, reject) => {
-    try {
-      const chunks = [];
-      
-      // Create PDF document
-      const doc = new PDFDocument({
-        size: templateConfig.layout?.pageSize || 'LETTER',
-        margins: templateConfig.layout?.margins || {
-          top: 72, bottom: 72, left: 72, right: 72
-        },
-        bufferPages: false, // Don't buffer - render sequentially
-        autoFirstPage: true,
-        info: {
-          Title: `${templateConfig.name} - ${patientData.name}`,
-          Author: orgData.name || 'Parrish Health Systems',
-          Subject: templateConfig.documentType,
-          CreationDate: new Date()
-        }
-      });
-
-      // Collect PDF chunks
-      doc.on('data', chunk => chunks.push(chunk));
-      doc.on('end', () => resolve(Buffer.concat(chunks)));
-      doc.on('error', reject);
-
-      // Build comprehensive merge context from all patient/org fields
-      const mergeContext = prepareMergeData(patientData, orgData, customData, assessmentData);
-
-      // Render header
-      renderHeader(doc, templateConfig.header, mergeContext);
-
-      // Render each section
-      for (const section of templateConfig.sections || []) {
-        renderSection(doc, section, mergeContext);
-      }
-
-      // Render footer at bottom of current page
-      renderFooter(doc, templateConfig.footer);
-
-      // Finalize PDF
-      doc.end();
-      
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
-
-/**
- * Render document header
- */
-function renderHeader(doc, headerConfig, context) {
-  if (!headerConfig) return;
-  
-  const startY = 40;
-  
-  doc.save();
-  
-  if (headerConfig.includeOrgName) {
-    doc.fontSize(10)
-       .font('Helvetica-Bold')
-       .text(context.orgName, doc.page.margins.left, startY);
-  }
-  
-  if (headerConfig.includeDate) {
-    doc.fontSize(10)
-       .font('Helvetica')
-       .text(context.generatedDate, doc.page.margins.left, startY, {
-         align: 'right',
-         width: doc.page.width - doc.page.margins.left - doc.page.margins.right
-       });
-  }
-  
-  // Horizontal line under header
-  const lineY = startY + 20;
-  doc.moveTo(doc.page.margins.left, lineY)
-     .lineTo(doc.page.width - doc.page.margins.right, lineY)
-     .strokeColor('#cccccc')
-     .stroke();
-  
-  doc.restore();
-  
-  // Move cursor below header
-  doc.y = lineY + 20;
-}
-
-/**
- * Render a content section
- */
-function renderSection(doc, section, context) {
-  const style = section.style || {};
-  
-  // Apply top margin
-  if (style.marginTop) {
-    doc.y += style.marginTop;
-  }
-  
-  // Check if we need a new page (leave room for content)
-  if (doc.y > doc.page.height - 150) {
-    doc.addPage();
-  }
-  
-  switch (section.type) {
-    case 'title':
-      renderTitle(doc, section, context);
-      break;
-    case 'paragraph':
-      renderParagraph(doc, section, context);
-      break;
-    case 'patientInfo':
-      renderPatientInfo(doc, section, context);
-      break;
-    case 'benefitPeriod':
-      renderBenefitPeriod(doc, section, context);
-      break;
-    case 'attendingPhysician':
-      renderAttendingPhysician(doc, section, context);
-      break;
-    case 'field':
-      renderField(doc, section, context);
-      break;
-    case 'signatureBlock':
-      renderSignatureBlock(doc, section, context);
-      break;
-    default:
-      console.warn(`Unknown section type: ${section.type}`);
-  }
-}
-
-function renderTitle(doc, section, context) {
-  const style = section.style || {};
-  doc.fontSize(style.fontSize || 16)
-     .font(style.bold ? 'Helvetica-Bold' : 'Helvetica')
-     .text(replaceMergeFields(section.content, context), {
-       align: style.alignment || 'center'
-     });
-  doc.moveDown(1.5);
-}
-
-function renderParagraph(doc, section, context) {
-  const style = section.style || {};
-  
-  let font = 'Helvetica';
-  if (style.bold && style.italic) {
-    font = 'Helvetica-BoldOblique';
-  } else if (style.bold) {
-    font = 'Helvetica-Bold';
-  } else if (style.italic) {
-    font = 'Helvetica-Oblique';
-  }
-  
-  doc.fontSize(style.fontSize || 11)
-     .font(font)
-     .text(replaceMergeFields(section.content, context), {
-       align: style.alignment || 'left',
-       lineGap: 3
-     });
-  doc.moveDown(0.8);
-}
-
-function renderPatientInfo(doc, section, context) {
-  const style = section.style || {};
-  const fields = section.fields || ['name', 'dob', 'mrn'];
-  
-  const boxTop = doc.y;
-  const boxLeft = doc.page.margins.left;
-  const boxWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-  const boxHeight = 20 + (Math.ceil(fields.length / 2) * 22);
-  
-  // Draw box
-  doc.rect(boxLeft, boxTop, boxWidth, boxHeight)
-     .strokeColor('#333333')
-     .stroke();
-  
-  // Header
-  doc.fontSize(10)
-     .font('Helvetica-Bold')
-     .fillColor('#333333')
-     .text('PATIENT INFORMATION', boxLeft + 10, boxTop + 8);
-  
-  // Field mappings
-  const fieldLabels = {
-    name: 'Patient Name',
-    dob: 'Date of Birth',
-    mrn: 'MRN',
-    currentPeriod: 'Current Period',
-    admissionDate: 'Admission Date',
-    diagnosis: 'Primary Diagnosis'
-  };
-  
-  const fieldValues = {
-    name: context.patientName,
-    dob: context.patientDOB,
-    mrn: context.patientMRN,
-    currentPeriod: context.currentPeriod,
-    admissionDate: context.admissionDate,
-    diagnosis: context.diagnosis
-  };
-  
-  doc.fontSize(style.fontSize || 10).font('Helvetica').fillColor('#000000');
-  
-  let yPos = boxTop + 28;
-  const colWidth = (boxWidth - 20) / 2;
-  
-  fields.forEach((field, idx) => {
-    const label = fieldLabels[field] || field;
-    const value = fieldValues[field] || context[field] || 'N/A';
-    
-    const col = idx % 2;
-    const xPos = boxLeft + 10 + (col * colWidth);
-    
-    if (idx > 0 && col === 0) {
-      yPos += 22;
-    }
-    
-    doc.font('Helvetica-Bold').text(`${label}: `, xPos, yPos, { continued: true });
-    doc.font('Helvetica').text(String(value).substring(0, 40));
-  });
-  
-  doc.y = boxTop + boxHeight + 15;
-}
-
-function renderBenefitPeriod(doc, section, context) {
-  const style = section.style || {};
-  
-  doc.fontSize(11)
-     .font('Helvetica-Bold')
-     .text('BENEFIT PERIOD INFORMATION', { underline: true });
-  doc.moveDown(0.5);
-  
-  const rows = [
-    ['Benefit Period:', context.currentPeriod || 'N/A'],
-    ['Period Start:', context.periodStart || 'N/A'],
-    ['Period End:', context.periodEnd || 'N/A'],
-    ['Certification Due:', context.certDueDate || 'N/A']
-  ];
-  
-  doc.fontSize(style.fontSize || 11);
-  
-  rows.forEach(([label, value]) => {
-    doc.font('Helvetica-Bold').text(label, { continued: true, width: 120 });
-    doc.font('Helvetica').text(` ${value}`);
-  });
-  
-  doc.moveDown(1);
-}
-
-function renderAttendingPhysician(doc, section, context) {
-  const style = section.style || {};
-  const fields = section.fields || ['attendingName', 'npi'];
-  
-  doc.fontSize(11)
-     .font('Helvetica-Bold')
-     .text('ATTENDING PHYSICIAN', { underline: true });
-  doc.moveDown(0.5);
-  
-  doc.fontSize(style.fontSize || 11).font('Helvetica');
-  
-  const fieldLabels = {
-    attendingName: 'Name',
-    npi: 'NPI',
-    phone: 'Phone',
-    fax: 'Fax',
-    specialty: 'Specialty'
-  };
-  
-  fields.forEach(field => {
-    const label = fieldLabels[field] || field;
-    const value = context[field] || context.attendingPhysician || 'N/A';
-    doc.text(`${label}: ${value}`);
-  });
-  
-  doc.moveDown(1);
-}
-
-function renderField(doc, section, context) {
-  const style = section.style || {};
-  const value = context[section.fieldName] || '';
-  const minHeight = style.minHeight || 20;
-  
-  // Draw a light box for the field
-  const boxTop = doc.y;
-  const boxWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-  
-  doc.rect(doc.page.margins.left, boxTop, boxWidth, minHeight)
-     .fillColor('#f9f9f9')
-     .fill()
-     .strokeColor('#dddddd')
-     .stroke();
-  
-  doc.fillColor('#000000')
-     .fontSize(style.fontSize || 11)
-     .font('Helvetica')
-     .text(value || '[No content provided]', doc.page.margins.left + 5, boxTop + 5, {
-       width: boxWidth - 10,
-       align: 'left'
-     });
-  
-  doc.y = boxTop + minHeight + 10;
-}
-
-function renderSignatureBlock(doc, section, context) {
-  const style = section.style || {};
-  const signers = section.signers || ['physician'];
-  
-  if (style.marginTop) doc.y += style.marginTop;
-  
-  // Check if we need a new page for signatures
-  const spaceNeeded = signers.length * 70 + 20;
-  if (doc.y > doc.page.height - spaceNeeded) {
-    doc.addPage();
-  }
-  
-  const signerLabels = {
-    physician: 'Physician Signature',
-    medicalDirector: 'Medical Director',
-    hospiceMedicalDirector: 'Hospice Medical Director',
-    attendingPhysician: 'Attending Physician',
-    f2fProvider: 'Face-to-Face Provider',
-    clinician: 'Clinician Signature',
-    admittingNurse: 'Admitting Nurse'
-  };
-  
-  const lineWidth = 250;
-  const dateLineWidth = 100;
-  const startX = doc.page.margins.left;
-  
-  signers.forEach((signer, idx) => {
-    const yPos = doc.y + (idx * 70);
-    
-    // Signature line
-    doc.moveTo(startX, yPos + 40)
-       .lineTo(startX + lineWidth, yPos + 40)
-       .strokeColor('#000000')
-       .stroke();
-    
-    doc.fontSize(9)
-       .font('Helvetica')
-       .fillColor('#333333')
-       .text(signerLabels[signer] || signer, startX, yPos + 45);
-    
-    // Date line
-    const dateX = startX + lineWidth + 30;
-    doc.moveTo(dateX, yPos + 40)
-       .lineTo(dateX + dateLineWidth, yPos + 40)
-       .stroke();
-    
-    doc.text('Date', dateX, yPos + 45);
-  });
-  
-  doc.y += signers.length * 70;
-}
-
-/**
- * Render page footer - simplified version without page switching
- */
-function renderFooter(doc, footerConfig) {
-  if (!footerConfig) return;
-  
-  // Position at bottom of page
-  const bottomY = doc.page.height - 50;
-  
-  doc.fontSize(8)
-     .font('Helvetica')
-     .fillColor('#666666');
-  
-  if (footerConfig.content) {
-    doc.text(
-      footerConfig.content, 
-      doc.page.margins.left, 
-      bottomY,
-      { 
-        align: 'center',
-        width: doc.page.width - doc.page.margins.left - doc.page.margins.right 
-      }
-    );
-  }
-}
-
-/**
- * Replace {{fieldName}} merge fields with actual values
- */
-function replaceMergeFields(text, context) {
-  if (!text) return '';
-  return text.replace(/\{\{(\w+)\}\}/g, (match, fieldName) => {
-    const value = context[fieldName];
-    return value !== undefined && value !== null ? value : match;
-  });
-}
-
-/**
- * Format date helper
+ * Format date helper — handles Firestore Timestamps, Dates, strings, numbers
  */
 function formatDate(dateValue) {
   if (!dateValue) return 'N/A';
-  
+
   let date;
   if (dateValue.toDate && typeof dateValue.toDate === 'function') {
     date = dateValue.toDate();
@@ -419,9 +22,9 @@ function formatDate(dateValue) {
   } else {
     return 'N/A';
   }
-  
+
   if (isNaN(date.getTime())) return 'N/A';
-  
+
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: '2-digit',
@@ -432,7 +35,10 @@ function formatDate(dateValue) {
 /**
  * Prepare the full merge data context.
  * Combines patient data, org data, and visit customData into a flat
- * dictionary of ~107 keys for template merge field resolution.
+ * dictionary of ~150+ keys for template merge field resolution.
+ *
+ * Keys are available in both camelCase (patientName) and UPPER_CASE
+ * (PATIENT_NAME) formats to support both naming conventions in templates.
  */
 function prepareMergeData(patientData, orgData, customData = {}, assessmentData = null) {
   const p = patientData || {};
@@ -600,35 +206,27 @@ function prepareMergeData(patientData, orgData, customData = {}, assessmentData 
   };
 
   // ── UPPER_CASE Template Merge Variable Aliases ──────────────
-  // Google Doc templates use UPPER_CASE merge fields (e.g. {{PATIENT_NAME}}).
-  // Map them from the camelCase values already computed above.
-
   const diagnoses = Array.isArray(p.diagnoses) ? p.diagnoses : [];
   const calcAge = p.dateOfBirth ? Math.floor((Date.now() - new Date(p.dateOfBirth?.toDate ? p.dateOfBirth.toDate() : p.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : '';
 
   Object.assign(base, {
-    // Shared across most/all templates
     PATIENT_NAME: base.patientName,
     DOB: base.patientDOB,
     MRN: base.patientMRN,
     MBI: base.patientMBI,
     MPI: base.patientMedicaid,
 
-    // Gender checkbox
     CBX_GENDER: base.patientGender || '',
 
-    // Benefit period checkboxes / info
     CBX_BP: base.currentPeriod || '',
     BENEFIT_PERIOD: base.startingBenefitPeriod || '',
     BENEFIT_PERIOD_1: base.periodStart || '',
     BENEFIT_PERIOD_2: base.periodEnd || '',
 
-    // Certification type / F2F / Related checkboxes (populated from customData or defaults)
     CBX_CT: c.CBX_CT || c.certType || '',
     CBX_F2F: base.f2fRequired || '',
     CBX_R: c.CBX_R || c.diagnosisRelationship || '',
 
-    // Diagnoses — both underscore and no-underscore variants
     DIAGNOSIS_1: diagnoses[0]?.name || '',
     DIAGNOSIS_2: diagnoses[1]?.name || '',
     DIAGNOSIS_3: diagnoses[2]?.name || '',
@@ -638,7 +236,6 @@ function prepareMergeData(patientData, orgData, customData = {}, assessmentData 
     DIAGNOSIS1: diagnoses[0]?.name || '',
     DIAGNOSIS2: diagnoses[1]?.name || '',
 
-    // Diagnosis onset dates (Attending CTI)
     D1_DATE: formatDate(diagnoses[0]?.onsetDate),
     D2_DATE: formatDate(diagnoses[1]?.onsetDate),
     D3_DATE: formatDate(diagnoses[2]?.onsetDate),
@@ -646,41 +243,33 @@ function prepareMergeData(patientData, orgData, customData = {}, assessmentData 
     D5_DATE: formatDate(diagnoses[4]?.onsetDate),
     D6_DATE: formatDate(diagnoses[5]?.onsetDate),
 
-    // Computed ICD-10
     CALC_ICD: base.primaryDiagnosisICD10 || '',
     CALC_AGE: calcAge !== '' ? String(calcAge) : '',
 
-    // Admission / Election
     ADMISSION: base.admissionDate,
     ELECTION_DATE: base.electionDate,
 
-    // Cert period dates — CTI uses CD_1/CD_2, Attending CTI uses CDATE1/CDATE2
     CD_1: base.periodStart || '',
     CD_2: base.periodEnd || '',
     CDATE1: base.periodStart || '',
     CDATE2: base.periodEnd || '',
 
-    // Attending physician
     PHYS_ATT_NAME: base.attendingPhysicianName,
     PHYS_ATT_NPI: base.attendingNPI,
     PHYS_ATT_PHONE: base.attendingPhone,
 
-    // F2F fields
     F2F_DATE: base.f2fDate,
     F2F_PHYSICIAN: base.f2fProvider,
     F2F_NPI: base.f2fProviderNpi,
     CBX_F2F_ROLE: base.f2fProviderRole || '',
 
-    // Visit date/time — assessment overrides customData
     SELECT_DATE: formatDate(a.visitDate) || base.visitDate || '',
     SELECT_TIME: a.visitTime || c.visitTime || c.SELECT_TIME || '',
 
-    // Location
     PATIENT_LOCATION: base.patientLocationName || base.patientLocationType || '',
     PATIENT_ADDRESS: base.patientAddress,
     PATIENT_PN: c.patientPhone || p.phone || '',
 
-    // Provider fields (Progress Note / Home Visit) — assessment overrides customData
     PROVIDER: a.clinicianName || c.clinicianName || c.PROVIDER || '',
     NPI: a.clinicianNpi || c.providerNpi || c.NPI || base.attendingNPI || '',
     CBX_VT: a.visitType || c.visitType || c.CBX_VT || '',
@@ -696,7 +285,6 @@ function prepareMergeData(patientData, orgData, customData = {}, assessmentData 
     PROVIDER_TITLE: a.clinicianTitle || c.clinicianTitle || '',
 
     // ── Tier 3: Clinical data from assessment ─────────────────────
-    // Vitals
     VITALS_BP: a.bpSystolic && a.bpDiastolic ? `${a.bpSystolic}/${a.bpDiastolic}` : (c.VITALS_BP || ''),
     VITALS_HR: a.heartRate || c.VITALS_HR || '',
     VITALS_RESP: a.respiratoryRate || c.VITALS_RESP || '',
@@ -704,25 +292,21 @@ function prepareMergeData(patientData, orgData, customData = {}, assessmentData 
     VITALS_O2: a.o2Saturation || c.VITALS_O2 || '',
     WEIGHT_CURRENT: a.weight || c.WEIGHT_CURRENT || '',
 
-    // Pain
     PAIN_SCORE: a.painLevel || c.PAIN_SCORE || '',
     PAIN_GOAL: a.painGoal || c.PAIN_GOAL || '',
     CBX_PAIN_RELIEF: a.painManaged != null ? (a.painManaged ? '☑ Yes  ☐ No' : '☐ Yes  ☑ No') : '',
 
-    // Functional status
     PPS_CURRENT: a.performanceScore || c.PPS_CURRENT || '',
     ADL_SCORE_CURRENT: a.adlScoreCurrent || c.ADL_SCORE_CURRENT || '',
     MOBILITY_STATUS: a.mobilityStatus || c.MOBILITY_STATUS || '',
     FALL_RISK: a.fallRisk || c.FALL_RISK || '',
 
-    // ADL details
     ADL_BATHING: a.adlBathing || '',
     ADL_DRESSING: a.adlDressing || '',
     ADL_TOILETING: a.adlToileting || '',
     ADL_TRANSFERRING: a.adlTransferring || '',
     ADL_FEEDING: a.adlFeeding || '',
 
-    // Symptoms
     SYMPTOM_PAIN: a.symptoms?.pain ? 'Yes' : 'No',
     SYMPTOM_NAUSEA: a.symptoms?.nausea ? 'Yes' : 'No',
     SYMPTOM_DYSPNEA: a.symptoms?.dyspnea ? 'Yes' : 'No',
@@ -733,12 +317,10 @@ function prepareMergeData(patientData, orgData, customData = {}, assessmentData 
     SYMPTOM_SKIN_ISSUES: a.symptoms?.skinIssues ? 'Yes' : 'No',
     SYMPTOM_NOTES: a.symptomNotes || c.SYMPTOM_NOTES || '',
 
-    // Narratives / clinical notes
     EXAM_FINDINGS_NARRATIVE: a.examFindingsNarrative || c.EXAM_FINDINGS_NARRATIVE || '',
     HPI_NARRATIVE: a.narrativeNotes || c.HPI_NARRATIVE || '',
     CLINICAL_NARRATIVE: a.narrativeNotes || c.CLINICAL_NARRATIVE || '',
 
-    // Care plan
     CBX_MED_CHANGES: a.medicationsReviewed != null ? (a.medicationsReviewed ? '☑ Reviewed  ☐ No Changes' : '☐ Reviewed  ☑ No Changes') : '',
     MED_CHANGE_DETAILS: a.planChanges || c.MED_CHANGE_DETAILS || '',
     ORDERS_DME: a.interventions || c.ORDERS_DME || '',
@@ -746,11 +328,10 @@ function prepareMergeData(patientData, orgData, customData = {}, assessmentData 
     EDUCATION_PROVIDED: a.educationProvided || '',
     NEXT_VISIT_DATE: formatDate(a.nextVisitDate),
 
-    // AI suggestion placeholder
     SUGGESTION: c.SUGGESTION || c.suggestion || '',
   });
 
   return base;
 }
 
-module.exports = { generatePDF, prepareMergeData };
+module.exports = { prepareMergeData, formatDate };
