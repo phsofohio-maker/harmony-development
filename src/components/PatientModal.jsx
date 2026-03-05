@@ -686,6 +686,7 @@ const PatientModal = ({ patient, onSave, onDelete, onClose, saving }) => {
           align-items: center;
           padding: 1rem 1.5rem;
           border-bottom: 1px solid #e5e7eb;
+          flex-shrink: 0;
         }
         .modal-header h2 { margin: 0; font-size: 1.125rem; }
         .close-btn {
@@ -701,6 +702,7 @@ const PatientModal = ({ patient, onSave, onDelete, onClose, saving }) => {
           background: #f9fafb;
           border-bottom: 1px solid #e5e7eb;
           flex-wrap: wrap;
+          flex-shrink: 0;
         }
         .summary-item {
           display: flex; flex-direction: column;
@@ -719,6 +721,7 @@ const PatientModal = ({ patient, onSave, onDelete, onClose, saving }) => {
           display: flex;
           border-bottom: 1px solid #e5e7eb;
           overflow-x: auto;
+          flex-shrink: 0;
         }
         .tab {
           padding: 0.625rem 0.75rem;
@@ -735,6 +738,7 @@ const PatientModal = ({ patient, onSave, onDelete, onClose, saving }) => {
           padding: 1.5rem;
           overflow-y: auto;
           flex: 1;
+          min-height: 0;
         }
         .error-message {
           background: #fee2e2; color: #991b1b;
@@ -818,6 +822,7 @@ const PatientModal = ({ patient, onSave, onDelete, onClose, saving }) => {
           padding: 1rem 1.5rem;
           border-top: 1px solid #e5e7eb;
           background: #f9fafb;
+          flex-shrink: 0;
         }
         .footer-right { display: flex; gap: 0.75rem; }
 
