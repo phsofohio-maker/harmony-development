@@ -41,8 +41,8 @@ const Sidebar = ({ currentPage, onNavigate, collapsed, onToggleCollapse }) => {
         <div className="logo">
           <div className="logo-icon">
             </div>
-            {!collapsed && <img 
-      src="https://previews.dropbox.com/p/thumb/AC6VfdhMrr4RxN7yHYkEJVwdTspoIDDiA5wVvEWU9kMVjzIP505W2xLFp4SAfCwY9uJfAN6P5ipA1bzYUedgsZX8APANOsr3_UMEGNz2AmIYjijMWyyPLDgloSO0bEHd67y7oAD3eV8Ujr_C-0xKgNj8tCmRP2VxVfxkRT5DVT7OtluYGnyyGdFTymAkmOhWsMy2sOfkqjYbOFfUuwlax9-OYAwd-4JODKfSK9_oo2x2gSfboz3ci97BtfUJVEFN48y96l7Mp_Dx28QkwELQRsXFnRT9xkg93cVxOcepMgFuMSO9zkrS9uCtCLpdWMlFvZE/p.png" 
+            {!collapsed && <img
+      src="/images/HHCA_CTI_Logo_WhiteEPS_.svg"
       alt="Harmony Health Care Assistant Logo"
       className="custom-logo"
     />}
