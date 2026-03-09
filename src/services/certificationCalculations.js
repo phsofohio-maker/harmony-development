@@ -84,7 +84,7 @@ export function determineCertPeriodByBenefit(benefitPeriodNumber, isReadmission 
       shortName: 'Initial 90-Day',
       periodNumber: 1,
       durationDays: 90,
-      documentTypes: ['90DAY_INITIAL', 'ATTEND_CERT', 'PROGRESS_NOTE'],
+      documentTypes: ['CTI', 'ATTEND_CTI', 'PHYSICIAN_HP'],
       requiresF2F: isReadmission,
       notifyDaysBefore: 14,
       periodType: '90day'
@@ -95,7 +95,7 @@ export function determineCertPeriodByBenefit(benefitPeriodNumber, isReadmission 
       shortName: '2nd 90-Day',
       periodNumber: 2,
       durationDays: 90,
-      documentTypes: ['90DAY_SECOND', 'PROGRESS_NOTE'],
+      documentTypes: ['CTI', 'PROGRESS_NOTE'],
       requiresF2F: isReadmission,
       notifyDaysBefore: 14,
       periodType: '90day'
@@ -106,7 +106,7 @@ export function determineCertPeriodByBenefit(benefitPeriodNumber, isReadmission 
       shortName: `${periodNum}${getOrdinalSuffix(periodNum)} 60-Day`,
       periodNumber: periodNum,
       durationDays: 60,
-      documentTypes: ['60DAY', 'PROGRESS_NOTE'],
+      documentTypes: ['CTI', 'PROGRESS_NOTE'],
       requiresF2F: true,
       notifyDaysBefore: 10,
       periodType: '60day'

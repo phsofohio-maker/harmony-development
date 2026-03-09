@@ -83,12 +83,10 @@ const SettingsPage = () => {
 
   // Document templates state
   const [docTemplates, setDocTemplates] = useState({
-    '60DAY': '',
-    '90DAY_INITIAL': '',
-    '90DAY_SECOND': '',
-    'ATTEND_CERT': '',
+    'CTI': '',
+    'ATTEND_CTI': '',
     'PROGRESS_NOTE': '',
-    'F2F_ENCOUNTER': '',
+    'PHYSICIAN_HP': '',
     'HOME_VISIT_ASSESSMENT': '',
   });
 
@@ -235,13 +233,11 @@ const SettingsPage = () => {
 
   // Document template types
   const DOCUMENT_TYPES = [
-    { id: '60DAY', label: 'CTI 60-Day Narrative', description: 'Used for 3rd+ benefit period recertifications' },
-    { id: '90DAY_INITIAL', label: 'CTI 90-Day Initial', description: 'Used for 1st benefit period initial certification' },
-    { id: '90DAY_SECOND', label: 'CTI 90-Day Second', description: 'Used for 2nd benefit period recertification' },
-    { id: 'ATTEND_CERT', label: 'Attending Physician CTI', description: 'Attending physician certification statement' },
+    { id: 'CTI', label: 'CTI Narrative', description: 'Certification narrative (all benefit periods)' },
+    { id: 'ATTEND_CTI', label: 'Attending Physician CTI', description: 'Attending physician certification statement' },
     { id: 'PROGRESS_NOTE', label: 'Progress Note', description: 'Standard clinical progress note' },
-    { id: 'F2F_ENCOUNTER', label: 'Face-to-Face Encounter', description: 'F2F encounter documentation' },
-    { id: 'HOME_VISIT_ASSESSMENT', label: 'Physician Home Visit Assessment', description: 'Comprehensive home visit form' },
+    { id: 'PHYSICIAN_HP', label: 'Physician H&P', description: 'Physician history and physical' },
+    { id: 'HOME_VISIT_ASSESSMENT', label: 'Home Visit Assessment', description: 'Comprehensive home visit form' },
   ];
 
   const isValidGoogleDocUrl = (url) => {

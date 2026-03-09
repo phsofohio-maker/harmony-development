@@ -1,14 +1,12 @@
 // scripts/configureTemplates.js
-// Updated for v1.2.1 — Canonical document template keys
+// Updated for v1.2.1 — Canonical document template keys (5 templates)
 //
-// Template key mapping (canonical set):
-//   60DAY               — CTI 60-Day Narrative (Period 3+)
-//   90DAY_INITIAL       — CTI 90-Day Initial (Period 1)
-//   90DAY_SECOND        — CTI 90-Day Second (Period 2)
-//   ATTEND_CERT         — Attending Physician Certification
-//   PROGRESS_NOTE       — Clinical Progress Note
-//   F2F_ENCOUNTER       — Face-to-Face Encounter
-//   HOME_VISIT_ASSESSMENT — Physician Home Visit Assessment
+// Template key mapping:
+//   CTI                   — CTI Narrative (all periods)
+//   ATTEND_CTI            — Attending Physician CTI
+//   PROGRESS_NOTE         — Clinical Progress Note
+//   PHYSICIAN_HP          — Physician H&P
+//   HOME_VISIT_ASSESSMENT — Home Visit Assessment
 
 const admin = require('firebase-admin');
 const serviceAccount = require('../service-account-key.json');
@@ -24,12 +22,10 @@ async function configureTemplates() {
 
   // Canonical template IDs (Google Doc IDs)
   const templates = {
-    '60DAY': '1FnxxzzMt3XEc-YH08lY6vRxTTwRInUOvVuWq5jkCC58',
-    '90DAY_INITIAL': '',
-    '90DAY_SECOND': '',
-    'ATTEND_CERT': '1jkHOS-go3-EKo0icVuXNhHmWDFXEcNACpCfkzKXd5LI',
+    'CTI': '1FnxxzzMt3XEc-YH08lY6vRxTTwRInUOvVuWq5jkCC58',
+    'ATTEND_CTI': '1jkHOS-go3-EKo0icVuXNhHmWDFXEcNACpCfkzKXd5LI',
     'PROGRESS_NOTE': '1f4PK03KzaY_0gWwYD0SDTxE4aV68taxVVZQGpsnnPVA',
-    'F2F_ENCOUNTER': '',
+    'PHYSICIAN_HP': '1p7Qoik9VQq0AdHiEtiKOLLsyGV5Xldp9qqe-qOyRJB8',
     'HOME_VISIT_ASSESSMENT': '15sQKvpwPm8mEC0NG7DWqWprHxhy2Lss1B8WbSg7iY0s',
   };
 

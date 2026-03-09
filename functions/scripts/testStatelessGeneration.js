@@ -1,4 +1,6 @@
 /**
+ * ⚠️ DEV ONLY — Do not run in production
+ *
  * scripts/testStatelessGeneration.js
  * Test the new stateless document generation
  */
@@ -17,7 +19,7 @@ admin.initializeApp({
 const TEST_CONFIG = {
   orgId: 'org_parrish',
   patientId: 'qyn8hdFlNnlt5JozoCt0', // Update with real patient ID
-  documentType: '60DAY',
+  documentType: 'CTI',
   userEmail: 'kobet@parrishhealthsystems.org'
 };
 

@@ -71,14 +71,28 @@ async function verifyDatabase() {
       if (orgData.settings?.documentTemplates) {
         const templates = orgData.settings.documentTemplates;
         const templateKeys = Object.keys(templates);
-        
+        const EXPECTED_KEYS = ['CTI', 'ATTEND_CTI', 'PROGRESS_NOTE', 'PHYSICIAN_HP', 'HOME_VISIT_ASSESSMENT'];
+        const DEPRECATED_KEYS = ['60DAY', '90DAY_INITIAL', '90DAY_SECOND', 'ATTEND_CERT', 'PATIENT_HISTORY', 'F2F_ENCOUNTER'];
+
         if (templateKeys.length > 0) {
           console.log(`✅ Document templates configured (${templateKeys.length} templates)`);
           templateKeys.forEach(key => {
             const id = templates[key];
-            console.log(`   ${key}: ${id || '❌ MISSING'}`);
-            if (!id) {
-              issues.push(`Template missing: ${key}`);
+            if (DEPRECATED_KEYS.includes(key)) {
+              console.log(`   ⚠️  ${key}: DEPRECATED KEY — should be migrated`);
+              warnings.push(`Deprecated template key found: ${key}`);
+            } else {
+              console.log(`   ${key}: ${id || '❌ MISSING'}`);
+              if (!id) {
+                issues.push(`Template missing: ${key}`);
+              }
+            }
+          });
+          // Check for missing expected keys
+          EXPECTED_KEYS.forEach(key => {
+            if (!templates[key]) {
+              console.log(`   ❌ Expected template key missing: ${key}`);
+              issues.push(`Expected template key not configured: ${key}`);
             }
           });
         } else {

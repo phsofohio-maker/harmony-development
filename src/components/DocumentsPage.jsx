@@ -40,21 +40,19 @@ import {
 
 // ── Document type definitions ──────────────────────────────────────
 const DOCUMENT_TYPES = [
-  { key: '60DAY', label: '60-Day Certification', description: 'Standard recertification (Period 3+)', icon: 'cert' },
-  { key: '90DAY_INITIAL', label: '90-Day Initial Certification', description: 'First benefit period', icon: 'cert' },
-  { key: '90DAY_SECOND', label: '90-Day Second Certification', description: 'Second benefit period', icon: 'cert' },
-  { key: 'ATTEND_CERT', label: 'Attending Certification', description: 'Attending physician certification', icon: 'cert' },
+  { key: 'CTI', label: 'CTI Narrative', description: 'Certification narrative (all periods)', icon: 'cert' },
+  { key: 'ATTEND_CTI', label: 'Attending Physician CTI', description: 'Attending physician certification statement', icon: 'cert' },
   { key: 'PROGRESS_NOTE', label: 'Progress Note', description: 'Clinical progress documentation', icon: 'note' },
-  { key: 'F2F_ENCOUNTER', label: 'Face-to-Face Encounter', description: 'F2F encounter documentation', icon: 'f2f' },
+  { key: 'PHYSICIAN_HP', label: 'Physician H&P', description: 'Physician history and physical', icon: 'f2f' },
   { key: 'HOME_VISIT_ASSESSMENT', label: 'Home Visit Assessment', description: 'Home visit clinical assessment', icon: 'visit' },
 ];
 
 // Smart selection: map visit types to recommended document types
 const VISIT_TYPE_DOC_MAP = {
   'Routine': ['PROGRESS_NOTE'],
-  'Recertification': ['60DAY', 'ATTEND_CERT', 'PROGRESS_NOTE'],
-  'Initial Assessment': ['90DAY_INITIAL', 'ATTEND_CERT', 'PROGRESS_NOTE', 'HOME_VISIT_ASSESSMENT'],
-  'F2F Visit': ['F2F_ENCOUNTER', 'PROGRESS_NOTE'],
+  'Recertification': ['CTI', 'ATTEND_CTI', 'PROGRESS_NOTE'],
+  'Initial Assessment': ['CTI', 'ATTEND_CTI', 'PHYSICIAN_HP', 'HOME_VISIT_ASSESSMENT'],
+  'F2F Visit': ['PHYSICIAN_HP', 'PROGRESS_NOTE'],
   'Discharge': ['PROGRESS_NOTE'],
   'PRN': ['PROGRESS_NOTE'],
   'Supervisory': ['PROGRESS_NOTE'],
@@ -598,8 +596,8 @@ const DocumentsPage = () => {
                                 </span>
                               </td>
                               <td>
-                                <span className={`source-badge ${doc.usedGoogleDocs ? 'gdocs' : 'pdfkit'}`}>
-                                  {doc.usedGoogleDocs ? 'Google Docs' : 'PDFKit'}
+                                <span className="source-badge gdocs">
+                                  Google Docs
                                 </span>
                               </td>
                               <td>
@@ -956,7 +954,6 @@ const DocumentsPage = () => {
         }
 
         .source-badge.gdocs { background: #dbeafe; color: #1d4ed8; }
-        .source-badge.pdfkit { background: var(--color-gray-100); color: var(--color-gray-600); }
 
         /* History Table */
         .filter-input {
