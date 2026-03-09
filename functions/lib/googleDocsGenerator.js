@@ -19,30 +19,27 @@ const { google } = require('googleapis');
 /**
  * Build an authenticated Google API client from service account credentials.
  * Looks for credentials in this order:
- *   1. GOOGLE_SERVICE_ACCOUNT_KEY env var (JSON string)
- *   2. functions.config().google.service_account_key (Firebase config)
+ *   1. GOOGLE_SERVICE_ACCOUNT_KEY env var (JSON string — for local dev)
+ *   2. Application Default Credentials (automatic in deployed Cloud Functions)
  */
 function getAuthClient() {
-  let credentials;
-
-  if (process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
-    credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
-  } else {
-    throw new Error(
-      'Google service account credentials not found. ' +
-      'Set GOOGLE_SERVICE_ACCOUNT_KEY env var with the service account JSON.'
-    );
-  }
-
-  const auth = new google.auth.GoogleAuth({
-    credentials,
+  const authOptions = {
     scopes: [
       'https://www.googleapis.com/auth/documents',
       'https://www.googleapis.com/auth/drive',
     ],
-  });
+  };
 
-  return auth;
+  // Use explicit credentials if provided (local development),
+  // otherwise fall back to Application Default Credentials (deployed functions)
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
+    authOptions.credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
+    console.log('Using explicit service account credentials from env var');
+  } else {
+    console.log('Using Application Default Credentials');
+  }
+
+  return new google.auth.GoogleAuth(authOptions);
 }
 
 /**
