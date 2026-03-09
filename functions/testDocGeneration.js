@@ -1,6 +1,8 @@
 /**
+ * ⚠️ DEV ONLY — Do not run in production
+ *
  * scripts/testDocumentGeneration.js
- * 
+ *
  * Test document generation by calling the DEPLOYED Cloud Function
  * This requires the function to be deployed first
  * 
@@ -29,7 +31,7 @@ const auth = admin.auth();
 const TEST_CONFIG = {
   orgId: 'org_parrish',
   patientId: '8uUbTbb5wFftzAIuxQqG',  // Your patient ID
-  documentType: '60DAY',
+  documentType: 'CTI',
   userEmail: 'kobet@parrishhealthsystems.org',  // Your email
   
   customData: {

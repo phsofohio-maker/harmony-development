@@ -52,12 +52,10 @@ async function setupOrganization() {
     // Document Templates (Required for generateCertificationDocs)
     settings: {
       documentTemplates: {
-        '60DAY': '1FnxxzzMt3XEc-YH08lY6vRxTTwRInUOvVuWq5jkCC58',
-        '90DAY_INITIAL': '',
-        '90DAY_SECOND': '',
-        'ATTEND_CERT': '1jkHOS-go3-EKo0icVuXNhHmWDFXEcNACpCfkzKXd5LI',
+        'CTI': '1FnxxzzMt3XEc-YH08lY6vRxTTwRInUOvVuWq5jkCC58',
+        'ATTEND_CTI': '1jkHOS-go3-EKo0icVuXNhHmWDFXEcNACpCfkzKXd5LI',
         'PROGRESS_NOTE': '1f4PK03KzaY_0gWwYD0SDTxE4aV68taxVVZQGpsnnPVA',
-        'F2F_ENCOUNTER': '',
+        'PHYSICIAN_HP': '1p7Qoik9VQq0AdHiEtiKOLLsyGV5Xldp9qqe-qOyRJB8',
         'HOME_VISIT_ASSESSMENT': '15sQKvpwPm8mEC0NG7DWqWprHxhy2Lss1B8WbSg7iY0s',
       }
     },

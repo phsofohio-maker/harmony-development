@@ -1,6 +1,8 @@
 /**
+ * ⚠️ DEV ONLY — Do not run in production
+ *
  * scripts/addDummyPatients.js
- * 
+ *
  * Add realistic test patients to your database
  * Covers various scenarios for testing compliance tracking
  * 

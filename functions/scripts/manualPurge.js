@@ -1,4 +1,6 @@
 /**
+ * ⚠️ DEV ONLY — Do not run in production
+ *
  * Run this with: node scripts/manualPurge.js
  * (Requires: npm install googleapis)
  */

@@ -32,7 +32,7 @@ const APP_URL = process.env.APP_URL || 'https://parrish-harmonyhca.web.app';
 exports.sendInvite = onDocumentCreated(
   {
     document: 'organizations/{orgId}/pendingInvites/{inviteId}',
-    /*secrets: [emailUser, emailPass],*/
+    secrets: [emailUser, emailPass],
     region: 'us-central1',
     invoker: 'public',
   },

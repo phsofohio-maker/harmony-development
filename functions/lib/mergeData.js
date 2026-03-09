@@ -220,6 +220,7 @@ function prepareMergeData(patientData, orgData, customData = {}, assessmentData 
 
     CBX_BP: base.currentPeriod || '',
     BENEFIT_PERIOD: base.startingBenefitPeriod || '',
+    BENEFIT_PERIOD_NUM: base.startingBenefitPeriod || '',
     BENEFIT_PERIOD_1: base.periodStart || '',
     BENEFIT_PERIOD_2: base.periodEnd || '',
 
@@ -235,6 +236,10 @@ function prepareMergeData(patientData, orgData, customData = {}, assessmentData 
     DIAGNOSIS_6: diagnoses[5]?.name || '',
     DIAGNOSIS1: diagnoses[0]?.name || '',
     DIAGNOSIS2: diagnoses[1]?.name || '',
+    DIAGNOSIS3: diagnoses[2]?.name || '',
+    DIAGNOSIS4: diagnoses[3]?.name || '',
+    DIAGNOSIS5: diagnoses[4]?.name || '',
+    DIAGNOSIS6: diagnoses[5]?.name || '',
 
     D1_DATE: formatDate(diagnoses[0]?.onsetDate),
     D2_DATE: formatDate(diagnoses[1]?.onsetDate),
@@ -260,6 +265,7 @@ function prepareMergeData(patientData, orgData, customData = {}, assessmentData 
 
     F2F_DATE: base.f2fDate,
     F2F_PHYSICIAN: base.f2fProvider,
+    F2F_PROVIDER_NAME: base.f2fProvider,
     F2F_NPI: base.f2fProviderNpi,
     CBX_F2F_ROLE: base.f2fProviderRole || '',
 
@@ -269,6 +275,7 @@ function prepareMergeData(patientData, orgData, customData = {}, assessmentData 
     PATIENT_LOCATION: base.patientLocationName || base.patientLocationType || '',
     PATIENT_ADDRESS: base.patientAddress,
     PATIENT_PN: c.patientPhone || p.phone || '',
+    PATIENT_PHONE: c.patientPhone || p.phone || '',
 
     PROVIDER: a.clinicianName || c.clinicianName || c.PROVIDER || '',
     NPI: a.clinicianNpi || c.providerNpi || c.NPI || base.attendingNPI || '',
