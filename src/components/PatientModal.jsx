@@ -749,7 +749,7 @@ const PatientModal = ({ patient, onSave, onDelete, onClose, saving }) => {
         /* Body */
         .modal-body {
           padding: 1.5rem;
-          overflow-y: auto;
+          overflow-y: scroll;
           flex: 1;
           min-height: 0;
         }

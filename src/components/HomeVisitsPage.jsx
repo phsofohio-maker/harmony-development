@@ -509,7 +509,7 @@ const hvpStyles = `
   }
   .hvp-modal-close:hover { color: var(--color-gray-800); }
   .hvp-modal-body {
-    overflow-y: auto; flex: 1; min-height: 0;
+    overflow-y: scroll; flex: 1; min-height: 0;
     padding: 0;
   }
 
