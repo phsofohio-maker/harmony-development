@@ -4,16 +4,14 @@
  */
 
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { 
-  getFirestore, 
-  collection, 
-  query, 
-  where, 
-  orderBy, 
-  limit, 
+import {
+  getFirestore,
+  collection,
+  query,
+  where,
+  orderBy,
+  limit,
   getDocs,
-  doc,
-  getDoc 
 } from 'firebase/firestore';
 
 const functions = getFunctions();

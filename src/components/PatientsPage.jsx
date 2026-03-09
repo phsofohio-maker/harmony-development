@@ -130,11 +130,12 @@ const PatientsPage = () => {
           bVal = b.compliance?.cti?.certificationEndDate ? 
             new Date(b.compliance.cti.certificationEndDate).getTime() : Infinity;
           break;
-        case 'urgency':
+        case 'urgency': {
           const urgencyOrder = { critical: 0, high: 1, medium: 2, normal: 3 };
           aVal = urgencyOrder[a.compliance?.overallUrgency] ?? 4;
           bVal = urgencyOrder[b.compliance?.overallUrgency] ?? 4;
           break;
+        }
         default:
           aVal = a.name || '';
           bVal = b.name || '';

@@ -75,9 +75,6 @@ export function formatDate(date) {
 export function determineCertPeriodByBenefit(benefitPeriodNumber, isReadmission = false) {
   const periodNum = parseInt(benefitPeriodNumber) || 1;
   
-  // F2F is required for period 3+ OR any readmission
-  const requiresF2F = periodNum >= 3 || isReadmission;
-  
   if (periodNum === 1) {
     return {
       name: 'Initial Period (1st 90 days)',
@@ -127,9 +124,10 @@ export function calculateCurrentBenefitPeriod(startingPeriod, daysSinceAdmission
   let daysRemaining = daysSinceAdmission;
   let periodStartDay = 0;
   
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     const periodDuration = (currentPeriod <= 2) ? 90 : 60;
-    
+
     if (daysRemaining <= periodDuration) {
       return {
         currentPeriod,
@@ -140,7 +138,7 @@ export function calculateCurrentBenefitPeriod(startingPeriod, daysSinceAdmission
         periodEndDay: periodStartDay + periodDuration
       };
     }
-    
+
     daysRemaining -= periodDuration;
     periodStartDay += periodDuration;
     currentPeriod++;
@@ -282,8 +280,7 @@ export function calculateHUVWindows(startOfCare) {
   if (!startOfCare) return null;
   
   const soc = new Date(startOfCare);
-  const today = normalizeDate(new Date());
-  
+
   const huv1Start = addDays(soc, 5);
   const huv1End = addDays(soc, 14);
   const huv2Start = addDays(soc, 15);

@@ -58,7 +58,6 @@ const CertificationsPage = () => {
 
   // Calculate stats
   const stats = useMemo(() => {
-    const now = new Date();
     return {
       dueThisWeek: patients.filter(p => {
         const days = p.compliance?.cti?.daysUntilCertEnd;
@@ -400,7 +399,7 @@ const CertificationsPage = () => {
       {modalOpen && selectedPatient && (
         <PatientModal
           patient={selectedPatient}
-          onSave={async (data) => {
+          onSave={async () => {
             // Handle save
             setModalOpen(false);
             await loadPatients();

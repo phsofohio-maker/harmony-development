@@ -8,7 +8,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getPatients } from '../services/patientService';
-import { formatDate } from '../services/certificationCalculations';
 import { httpsCallable } from 'firebase/functions';
 import { functions, db } from '../lib/firebase';
 import {
@@ -17,7 +16,6 @@ import {
   orderBy,
   limit,
   getDocs,
-  where
 } from 'firebase/firestore';
 import {
   FileText,
@@ -59,7 +57,7 @@ const VISIT_TYPE_DOC_MAP = {
 };
 
 const DocumentsPage = () => {
-  const { user, userProfile } = useAuth();
+  const { userProfile } = useAuth();
   const orgId = userProfile?.organizationId || 'org_parrish';
 
   // Data state

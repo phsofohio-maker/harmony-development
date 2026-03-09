@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 
 const NotificationsPage = () => {
-  const { user, userProfile } = useAuth();
+  const { userProfile } = useAuth();
   const orgId = userProfile?.organizationId || 'org_parrish';
 
   const [settings, setSettings] = useState({

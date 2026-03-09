@@ -11,7 +11,6 @@ const PatientChartView = ({ patient, onClose, onEdit }) => {
   if (!patient) return null;
 
   const cti = patient.compliance?.cti;
-  const huv = patient.compliance?.huv;
 
   // Handle attendingPhysician as object or legacy string
   const ap = typeof patient.attendingPhysician === 'object'
@@ -35,8 +34,6 @@ const PatientChartView = ({ patient, onClose, onEdit }) => {
     </div>
   );
 
-  const primaryDx = Array.isArray(patient.diagnoses) && patient.diagnoses.length > 0
-    ? patient.diagnoses[0] : null;
 
   return (
     <div className="cv-overlay" onClick={onClose}>
