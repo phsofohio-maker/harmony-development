@@ -4,3 +4,5 @@ service-account-key.json
 SERVICE_ACCOUNT_JSON
 functions/service-account-key.json
 functions/SERVICE_ACCOUNT_JSON
+.env
+*.env
