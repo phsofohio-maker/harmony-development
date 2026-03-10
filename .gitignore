@@ -23,6 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 
+functions/.env
+.env
 
 #keys
 service-account-key.json
