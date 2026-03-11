@@ -97,10 +97,18 @@ exports.generateDocument = onCall({
     // 5. Generate PDF via Google Docs API
     console.log(`Using Google Docs template: ${templateDocId} for ${documentType}`);
     const templateName = documentType.replace(/_/g, ' ');
+
+    // Use temp Drive folder to avoid service account quota issues
+    const tempFolderId = orgData?.settings?.tempDriveFolderId || null;
+    if (!tempFolderId) {
+      console.warn('No tempDriveFolderId configured — temp copies will land in service account root Drive');
+    }
+
     const pdfBuffer = await generateFromGoogleDoc(
       templateDocId,
       mergeData,
-      `${documentType} - ${patient.name} - ${new Date().toISOString().split('T')[0]}`
+      `${documentType} - ${patient.name} - ${new Date().toISOString().split('T')[0]}`,
+      tempFolderId
     );
 
     console.log(`PDF generated: ${pdfBuffer.length} bytes`);

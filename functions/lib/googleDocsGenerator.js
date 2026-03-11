@@ -3,57 +3,41 @@
  * Google Docs/Drive API document generator
  *
  * Workflow:
- *   1. Copy a Google Doc template
+ *   1. Copy a Google Doc template (into temp folder if configured)
  *   2. Batch replaceAllText with merge data
  *   3. Export copy as PDF
- *   4. Delete the copy
+ *   4. Delete the copy (with retry)
  *   5. Return PDF buffer
  *
- * Requires a service account with Google Docs & Drive API access.
- * The service account JSON key is stored in Firebase Functions config
- * or as a GOOGLE_SERVICE_ACCOUNT_KEY environment variable.
+ * Uses Application Default Credentials (ADC) — no service account key needed.
+ * In Cloud Functions, ADC automatically uses the function's service account.
  */
 
 const { google } = require('googleapis');
 
 /**
- * Build an authenticated Google API client from service account credentials.
- * Looks for credentials in this order:
- *   1. GOOGLE_SERVICE_ACCOUNT_KEY env var (JSON string)
- *   2. functions.config().google.service_account_key (Firebase config)
+ * Build an authenticated Google API client using Application Default Credentials.
+ * In Cloud Functions this resolves to the function's service account automatically.
  */
 function getAuthClient() {
-  let credentials;
-
-  if (process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
-    credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
-  } else {
-    throw new Error(
-      'Google service account credentials not found. ' +
-      'Set GOOGLE_SERVICE_ACCOUNT_KEY env var with the service account JSON.'
-    );
-  }
-
-  const auth = new google.auth.GoogleAuth({
-    credentials,
+  return new google.auth.GoogleAuth({
     scopes: [
       'https://www.googleapis.com/auth/documents',
       'https://www.googleapis.com/auth/drive',
     ],
   });
-
-  return auth;
 }
 
 /**
  * Generate a PDF from a Google Docs template using mail-merge style replacement.
  *
- * @param {string} templateDocId - The Google Doc ID of the template to copy
- * @param {Object} mergeData     - Flat key-value object. Keys become {{KEY}} placeholders.
- * @param {string} [title]       - Optional title for the temporary copy
- * @returns {Promise<Buffer>}    - PDF buffer
+ * @param {string} templateDocId  - The Google Doc ID of the template to copy
+ * @param {Object} mergeData      - Flat key-value object. Keys become {{KEY}} placeholders.
+ * @param {string} [title]        - Optional title for the temporary copy
+ * @param {string} [tempFolderId] - Optional Drive folder ID to place the temp copy in
+ * @returns {Promise<Buffer>}     - PDF buffer
  */
-async function generateFromGoogleDoc(templateDocId, mergeData, title) {
+async function generateFromGoogleDoc(templateDocId, mergeData, title, tempFolderId) {
   const auth = getAuthClient();
   const drive = google.drive({ version: 'v3', auth });
   const docs = google.docs({ version: 'v1', auth });
@@ -61,13 +45,20 @@ async function generateFromGoogleDoc(templateDocId, mergeData, title) {
   let copyId;
 
   try {
-    // 1. Copy the template
+    // 1. Copy the template (into temp folder if configured)
+    const copyRequestBody = {
+      name: title || `Generated_${Date.now()}`,
+    };
+
+    if (tempFolderId) {
+      copyRequestBody.parents = [tempFolderId];
+      console.log(`Target folder: ${tempFolderId}`);
+    }
+
     console.log(`Copying template: ${templateDocId}`);
     const copyResponse = await drive.files.copy({
       fileId: templateDocId,
-      requestBody: {
-        name: title || `Generated_${Date.now()}`,
-      },
+      requestBody: copyRequestBody,
     });
     copyId = copyResponse.data.id;
     console.log(`Template copy created: ${copyId}`);
@@ -109,13 +100,26 @@ async function generateFromGoogleDoc(templateDocId, mergeData, title) {
 
     return pdfBuffer;
   } finally {
-    // 4. Delete the temporary copy (best-effort)
+    // 4. Delete the temporary copy (best-effort, with retry)
     if (copyId) {
-      try {
-        await drive.files.delete({ fileId: copyId });
-        console.log(`Temporary copy deleted: ${copyId}`);
-      } catch (deleteErr) {
-        console.warn(`Failed to delete temporary copy ${copyId}:`, deleteErr.message);
+      const maxAttempts = 2;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          await drive.files.delete({ fileId: copyId });
+          console.log(`Temporary copy deleted: ${copyId}`);
+          break;
+        } catch (deleteErr) {
+          if (attempt < maxAttempts) {
+            console.warn(`Delete attempt ${attempt} failed, retrying in 1.5s...`);
+            await new Promise(r => setTimeout(r, 1500));
+          } else {
+            console.error(
+              `LEAKED temp file — failed to delete after ${maxAttempts} attempts. ` +
+              `File ID: ${copyId}, Folder: ${tempFolderId || 'default'}. ` +
+              `Error: ${deleteErr.message}`
+            );
+          }
+        }
       }
     }
   }
