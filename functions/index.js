@@ -25,6 +25,9 @@ const { resendInvite, cancelInvite, createInvite } = require('./manageInvites');
 // Patient import/export
 const { exportPatients, importPatients } = require('./patientImportExport');
 
+// Drive cleanup
+const { cleanupTempDocs } = require('./cleanupTempDocs');
+
 // Migration
 const { migratePatients } = require('./migratePatients');
 /**
@@ -71,6 +74,9 @@ module.exports = {
 
   // Migration
   migratePatients,
+
+  // Scheduled cleanup
+  cleanupTempDocs,
 
   //Other
   testEmail,

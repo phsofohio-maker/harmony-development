@@ -90,6 +90,9 @@ const SettingsPage = () => {
     'HOME_VISIT_ASSESSMENT': '',
   });
 
+  // Temp Drive folder ID for document generation
+  const [tempFolderId, setTempFolderId] = useState('');
+
   // Load settings
   useEffect(() => {
     loadSettings();
@@ -141,6 +144,9 @@ const SettingsPage = () => {
             ])
           ),
         }));
+
+        // Load temp Drive folder ID
+        setTempFolderId(data.settings?.tempDriveFolderId || '');
       }
     } catch (err) {
       console.error('Error loading settings:', err);
@@ -259,6 +265,7 @@ const SettingsPage = () => {
       }
       await updateDoc(doc(db, 'organizations', orgId), {
         'settings.documentTemplates': templateIds,
+        'settings.tempDriveFolderId': tempFolderId.trim() || '',
         updatedAt: serverTimestamp(),
       });
       setSaveMessage({ type: 'success', text: 'Document templates saved!' });
@@ -636,6 +643,31 @@ const SettingsPage = () => {
                 </div>
               )}
             </div>
+
+            {(userRole === 'admin' || userRole === 'owner') && (
+              <div className="section-card" style={{ marginTop: '1.5rem' }}>
+                <h3>Drive Storage</h3>
+                <p className="section-desc">
+                  Temp Drive Folder ID — the shared Google Drive folder where temporary document copies
+                  are created during generation. This prevents quota issues on the service account.
+                </p>
+                <div className="template-row">
+                  <div className="template-info">
+                    <span className="template-name">Temp Drive Folder ID</span>
+                    <span className="template-desc">Folder owned by notifications@ with Editor access for the service account</span>
+                  </div>
+                  <div className="template-input-row">
+                    <input
+                      type="text"
+                      value={tempFolderId}
+                      onChange={(e) => setTempFolderId(e.target.value)}
+                      placeholder="e.g. 1aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+                      className="template-input"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {(userRole === 'admin' || userRole === 'owner') && (
               <div className="form-actions">
