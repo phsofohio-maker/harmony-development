@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Read(//home/user/.claude/plans/**)"
+      "Read(//home/user/.claude/plans/**)",
+      "Bash(firebase deploy:*)"
     ]
   }
 }

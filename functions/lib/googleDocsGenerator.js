@@ -3,49 +3,71 @@
  * Google Docs/Drive API document generator
  *
  * Workflow:
- *   1. Copy a Google Doc template (into temp folder if configured)
- *   2. Batch replaceAllText with merge data
- *   3. Export copy as PDF
- *   4. Delete the copy (with retry)
- *   5. Return PDF buffer
+ *   1. Authenticate (with domain-wide delegation if configured)
+ *   2. Copy a Google Doc template (into temp folder if configured)
+ *   3. Batch replaceAllText with merge data
+ *   4. Export copy as PDF buffer
+ *   5. Delete the temp copy (with retry)
+ *   6. Return PDF buffer
  *
- * Uses Application Default Credentials (ADC) — no service account key needed.
- * In Cloud Functions, ADC automatically uses the function's service account.
+ * Auth: Uses Application Default Credentials with domain-wide delegation.
+ * The service account impersonates a real Google Workspace user so that
+ * file operations use that user's Drive quota (service accounts have
+ * zero Drive quota since April 2025).
  */
 
 const { google } = require('googleapis');
 
 /**
- * Build an authenticated Google API client using Application Default Credentials.
- * In Cloud Functions this resolves to the function's service account automatically.
+ * Build an authenticated Google API client.
+ *
+ * If impersonateEmail is provided, uses domain-wide delegation to act
+ * as that user. Otherwise falls back to plain ADC (which will fail for
+ * Drive file creation since April 2025).
+ *
+ * @param {string} [impersonateEmail] - Google Workspace user to impersonate
+ * @returns {google.auth.GoogleAuth}
  */
-function getAuthClient() {
-  return new google.auth.GoogleAuth({
+function getAuthClient(impersonateEmail) {
+  const authConfig = {
     scopes: [
       'https://www.googleapis.com/auth/documents',
       'https://www.googleapis.com/auth/drive',
     ],
-  });
+  };
+
+  // Domain-wide delegation: impersonate a real user
+  if (impersonateEmail) {
+    authConfig.clientOptions = {
+      subject: impersonateEmail,
+    };
+    console.log(`Auth: Impersonating ${impersonateEmail} via domain-wide delegation`);
+  } else {
+    console.warn('Auth: No impersonation configured — Drive operations may fail (SA quota = 0)');
+  }
+
+  return new google.auth.GoogleAuth(authConfig);
 }
 
 /**
  * Generate a PDF from a Google Docs template using mail-merge style replacement.
  *
- * @param {string} templateDocId  - The Google Doc ID of the template to copy
- * @param {Object} mergeData      - Flat key-value object. Keys become {{KEY}} placeholders.
- * @param {string} [title]        - Optional title for the temporary copy
- * @param {string} [tempFolderId] - Optional Drive folder ID to place the temp copy in
- * @returns {Promise<Buffer>}     - PDF buffer
+ * @param {string} templateDocId    - The Google Doc ID of the template to copy
+ * @param {Object} mergeData        - Flat key-value object. Keys become {{KEY}} placeholders.
+ * @param {string} [title]          - Optional title for the temporary copy
+ * @param {string} [tempFolderId]   - Google Drive folder ID for temp copies
+ * @param {string} [impersonateEmail] - Workspace user to impersonate for Drive quota
+ * @returns {Promise<Buffer>}       - PDF buffer
  */
-async function generateFromGoogleDoc(templateDocId, mergeData, title, tempFolderId) {
-  const auth = getAuthClient();
+async function generateFromGoogleDoc(templateDocId, mergeData, title, tempFolderId, impersonateEmail) {
+  const auth = getAuthClient(impersonateEmail);
   const drive = google.drive({ version: 'v3', auth });
   const docs = google.docs({ version: 'v1', auth });
 
   let copyId;
 
   try {
-    // 1. Copy the template (into temp folder if configured)
+    // 1. Copy the template
     const copyRequestBody = {
       name: title || `Generated_${Date.now()}`,
     };
@@ -66,9 +88,7 @@ async function generateFromGoogleDoc(templateDocId, mergeData, title, tempFolder
     // 2. Build batch replaceAllText requests
     const requests = [];
     for (const [key, value] of Object.entries(mergeData)) {
-      // Skip null/undefined values — leave placeholder as-is
       if (value == null) continue;
-
       requests.push({
         replaceAllText: {
           containsText: {
@@ -99,25 +119,21 @@ async function generateFromGoogleDoc(templateDocId, mergeData, title, tempFolder
     console.log(`PDF exported: ${pdfBuffer.length} bytes`);
 
     return pdfBuffer;
+
   } finally {
-    // 4. Delete the temporary copy (best-effort, with retry)
+    // 4. Delete the temporary copy (retry once on failure)
     if (copyId) {
-      const maxAttempts = 2;
-      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      for (let attempt = 1; attempt <= 2; attempt++) {
         try {
           await drive.files.delete({ fileId: copyId });
           console.log(`Temporary copy deleted: ${copyId}`);
           break;
         } catch (deleteErr) {
-          if (attempt < maxAttempts) {
-            console.warn(`Delete attempt ${attempt} failed, retrying in 1.5s...`);
-            await new Promise(r => setTimeout(r, 1500));
+          console.warn(`Delete attempt ${attempt}/2 failed for ${copyId}: ${deleteErr.message}`);
+          if (attempt === 1) {
+            await new Promise(resolve => setTimeout(resolve, 1500));
           } else {
-            console.error(
-              `LEAKED temp file — failed to delete after ${maxAttempts} attempts. ` +
-              `File ID: ${copyId}, Folder: ${tempFolderId || 'default'}. ` +
-              `Error: ${deleteErr.message}`
-            );
+            console.error(`LEAKED TEMP FILE: ${copyId} — manual cleanup needed in _HarmonyTempDocs folder`);
           }
         }
       }

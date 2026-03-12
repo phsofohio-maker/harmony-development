@@ -98,17 +98,23 @@ exports.generateDocument = onCall({
     console.log(`Using Google Docs template: ${templateDocId} for ${documentType}`);
     const templateName = documentType.replace(/_/g, ' ');
 
-    // Use temp Drive folder to avoid service account quota issues
+    // Drive delegation settings
     const tempFolderId = orgData?.settings?.tempDriveFolderId || null;
+    const impersonateEmail = orgData?.settings?.driveImpersonateEmail || null;
+
+    if (!impersonateEmail) {
+      console.error('WARNING: No driveImpersonateEmail configured — Drive operations WILL fail (SA has zero quota since April 2025)');
+    }
     if (!tempFolderId) {
-      console.warn('No tempDriveFolderId configured — temp copies will land in service account root Drive');
+      console.warn('No tempDriveFolderId configured — temp copies will land in impersonated user root Drive');
     }
 
     const pdfBuffer = await generateFromGoogleDoc(
       templateDocId,
       mergeData,
       `${documentType} - ${patient.name} - ${new Date().toISOString().split('T')[0]}`,
-      tempFolderId
+      tempFolderId,
+      impersonateEmail
     );
 
     console.log(`PDF generated: ${pdfBuffer.length} bytes`);
