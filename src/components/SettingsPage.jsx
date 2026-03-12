@@ -36,7 +36,7 @@ import {
 import { serverTimestamp } from 'firebase/firestore';
 
 const SettingsPage = () => {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const orgId = user?.customClaims?.orgId || 'org_parrish';
 
   // Tab state
@@ -279,7 +279,7 @@ const SettingsPage = () => {
   };
 
   // User role for permissions
-  const userRole = user?.customClaims?.role || 'viewer';
+  const userRole = user?.customClaims?.role || userProfile?.role || 'viewer';
 
   const tabs = [
     { id: 'general', label: 'General', icon: Building2 },
