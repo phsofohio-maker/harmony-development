@@ -2,7 +2,18 @@
   "permissions": {
     "allow": [
       "Read(//home/user/.claude/plans/**)",
-      "Bash(firebase deploy:*)"
+      "Bash(firebase deploy:*)",
+      "Bash(gcloud functions:*)",
+      "Bash(node -e \":*)",
+      "Bash(node -e \"const {google} = require\\(''googleapis''\\); console.log\\(Object.keys\\(google.auth\\).filter\\(k => typeof google.auth[k] === ''function''\\)\\)\")",
+      "Bash(ls -la /home/user/harmony-dashboard/functions/*.js)",
+      "Bash(grep -r \"TODO\\\\|FIXME\\\\|HACK\\\\|BUG\\\\|XXX\" /home/user/harmony-dashboard/functions/*.js)",
+      "Bash(ls -la /home/user/harmony-dashboard/src/components/*.jsx)",
+      "Bash(wc -l /home/user/harmony-dashboard/src/services/*.js /home/user/harmony-dashboard/src/components/*.jsx)",
+      "Bash(npm list:*)",
+      "Bash(grep -n \"console\\\\.\\\\\\(log\\\\|error\\\\|warn\\\\\\)\" /home/user/harmony-dashboard/src/components/*.jsx)",
+      "Bash(grep -n \"console\\\\.error\" /home/user/harmony-dashboard/src/components/*.jsx)",
+      "Bash(grep -n \"console.error\\\\|throw new\\\\|catch\" /home/user/harmony-dashboard/functions/*.js)"
     ]
   }
 }

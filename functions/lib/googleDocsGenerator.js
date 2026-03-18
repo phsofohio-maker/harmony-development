@@ -21,32 +21,42 @@ const { google } = require('googleapis');
 /**
  * Build an authenticated Google API client.
  *
- * If impersonateEmail is provided, uses domain-wide delegation to act
- * as that user. Otherwise falls back to plain ADC (which will fail for
- * Drive file creation since April 2025).
+ * If impersonateEmail is provided, uses a JWT client with domain-wide
+ * delegation (subject claim) to act as that user. ADC/Compute credentials
+ * silently ignore the subject param, so we must use JWT with an explicit
+ * service account key for delegation to work.
  *
  * @param {string} [impersonateEmail] - Google Workspace user to impersonate
- * @returns {google.auth.GoogleAuth}
+ * @returns {google.auth.JWT|google.auth.GoogleAuth}
  */
 function getAuthClient(impersonateEmail) {
-  const authConfig = {
-    scopes: [
-      'https://www.googleapis.com/auth/documents',
-      'https://www.googleapis.com/auth/drive',
-    ],
-  };
+  const scopes = [
+    'https://www.googleapis.com/auth/documents',
+    'https://www.googleapis.com/auth/drive',
+  ];
 
-  // Domain-wide delegation: impersonate a real user
   if (impersonateEmail) {
-    authConfig.clientOptions = {
+    // Domain-wide delegation requires JWT auth with a service account key.
+    // Compute/ADC credentials silently ignore the subject claim.
+    const saKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+    if (!saKey) {
+      console.error('Auth: GOOGLE_SERVICE_ACCOUNT_KEY env var not set — cannot use domain-wide delegation');
+      return new google.auth.GoogleAuth({ scopes });
+    }
+
+    const credentials = JSON.parse(saKey);
+    console.log(`Auth: Using JWT with SA ${credentials.client_email}, impersonating ${impersonateEmail}`);
+
+    return new google.auth.JWT({
+      email: credentials.client_email,
+      key: credentials.private_key,
+      scopes,
       subject: impersonateEmail,
-    };
-    console.log(`Auth: Impersonating ${impersonateEmail} via domain-wide delegation`);
-  } else {
-    console.warn('Auth: No impersonation configured — Drive operations may fail (SA quota = 0)');
+    });
   }
 
-  return new google.auth.GoogleAuth(authConfig);
+  console.warn('Auth: No impersonation configured — Drive operations may fail (SA quota = 0)');
+  return new google.auth.GoogleAuth({ scopes });
 }
 
 /**
