@@ -683,6 +683,11 @@ const PatientModal = ({ patient, onSave, onDelete, onClose, saving }) => {
           z-index: 1000;
           padding: 1rem;
         }
+        .modal-body {
+          overflow: hidden;
+          overflow-y: scroll;
+          scrollbar-width: none;
+        }
         .modal-container.wide {
           background: white;
           border-radius: 12px;
@@ -690,6 +695,8 @@ const PatientModal = ({ patient, onSave, onDelete, onClose, saving }) => {
           max-width: 800px;
           max-height: 90vh;
           overflow: hidden;
+          overflow-y: scroll;
+          scrollbar-width: none;
           display: flex;
           flex-direction: column;
         }
