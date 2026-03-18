@@ -31,6 +31,12 @@ import {
   X,
   Loader2,
   ClipboardList,
+  Activity,
+  Heart,
+  Thermometer,
+  Wind,
+  Check,
+  XCircle,
 } from 'lucide-react';
 
 const HomeVisitsPage = () => {
@@ -291,50 +297,203 @@ const HomeVisitsPage = () => {
         <div className="hvp-modal-overlay">
           <div className="hvp-modal">
             <div className="hvp-modal-header">
-              <h3>Assessment Detail — {viewingVisit.visitDate || 'N/A'}</h3>
+              <h3>Assessment Detail</h3>
               <button className="hvp-modal-close" onClick={() => setViewingVisit(null)}>
                 <X size={20} />
               </button>
             </div>
             <div className="hvp-modal-body">
-              <div className="hvp-detail-grid">
-                <div className="hvp-detail-section">
-                  <h4>Visit Info</h4>
-                  <div className="hvp-detail-row"><span>Date:</span> {viewingVisit.visitDate || 'N/A'}</div>
-                  <div className="hvp-detail-row"><span>Time:</span> {viewingVisit.visitTime || 'N/A'}</div>
-                  <div className="hvp-detail-row"><span>Type:</span> {viewingVisit.visitType || 'N/A'}</div>
-                  <div className="hvp-detail-row"><span>Provider:</span> {viewingVisit.clinicianName || 'N/A'}</div>
-                  <div className="hvp-detail-row"><span>Title:</span> {viewingVisit.clinicianTitle || 'N/A'}</div>
+              {/* A2: Compact Patient Header Bar */}
+              <div className="hvp-detail-patient-bar">
+                <div className="hvp-detail-patient-info">
+                  <span className="hvp-detail-patient-name">{selectedPatient?.name || 'Patient'}</span>
+                  {selectedPatient?.mrNumber && <span className="hvp-detail-patient-meta">MR# {selectedPatient.mrNumber}</span>}
+                  {selectedPatient?.dateOfBirth && <span className="hvp-detail-patient-meta">DOB: {(() => { const d = selectedPatient.dateOfBirth?.toDate ? selectedPatient.dateOfBirth.toDate() : new Date(selectedPatient.dateOfBirth); return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString(); })()}</span>}
                 </div>
-                <div className="hvp-detail-section">
-                  <h4>Vitals</h4>
-                  <div className="hvp-detail-row"><span>BP:</span> {viewingVisit.bpSystolic && viewingVisit.bpDiastolic ? `${viewingVisit.bpSystolic}/${viewingVisit.bpDiastolic}` : 'N/A'}</div>
-                  <div className="hvp-detail-row"><span>HR:</span> {viewingVisit.heartRate || 'N/A'}</div>
-                  <div className="hvp-detail-row"><span>RR:</span> {viewingVisit.respiratoryRate || 'N/A'}</div>
-                  <div className="hvp-detail-row"><span>Temp:</span> {viewingVisit.temperature || 'N/A'}</div>
-                  <div className="hvp-detail-row"><span>O2 Sat:</span> {viewingVisit.o2Saturation || 'N/A'}</div>
-                  <div className="hvp-detail-row"><span>Pain:</span> {viewingVisit.painLevel || 'N/A'}</div>
-                  <div className="hvp-detail-row"><span>Weight:</span> {viewingVisit.weight || 'N/A'}</div>
-                </div>
-                <div className="hvp-detail-section">
-                  <h4>Performance</h4>
-                  <div className="hvp-detail-row"><span>PPS Score:</span> {viewingVisit.performanceScore || 'N/A'}</div>
-                  <div className="hvp-detail-row"><span>Mobility:</span> {viewingVisit.mobilityStatus || 'N/A'}</div>
-                  <div className="hvp-detail-row"><span>Fall Risk:</span> {viewingVisit.fallRisk || 'N/A'}</div>
+                <div className="hvp-detail-patient-visit">
+                  <Calendar size={14} />
+                  <span>{viewingVisit.visitDate || 'N/A'}</span>
+                  {viewingVisit.visitType && <span className="hvp-detail-type-badge">{viewingVisit.visitType}</span>}
                 </div>
               </div>
-              {viewingVisit.narrativeNotes && (
-                <div className="hvp-detail-section" style={{marginTop: '1rem'}}>
-                  <h4>Narrative Notes</h4>
-                  <p className="hvp-narrative">{viewingVisit.narrativeNotes}</p>
+
+              <div className="hvp-detail-cards">
+                {/* Visit Information Card */}
+                <div className="hvp-section-card">
+                  <div className="hvp-section-header hvp-section-blue">
+                    <ClipboardList size={16} /> Visit Information
+                  </div>
+                  <div className="hvp-section-body">
+                    <div className="hvp-info-grid">
+                      <div className="hvp-info-item"><span className="hvp-info-label">Date</span><span className="hvp-info-value">{viewingVisit.visitDate || 'N/A'}</span></div>
+                      <div className="hvp-info-item"><span className="hvp-info-label">Time</span><span className="hvp-info-value">{viewingVisit.visitTime || 'N/A'}</span></div>
+                      <div className="hvp-info-item"><span className="hvp-info-label">Type</span><span className="hvp-info-value">{viewingVisit.visitType || 'N/A'}</span></div>
+                      <div className="hvp-info-item"><span className="hvp-info-label">Provider</span><span className="hvp-info-value">{viewingVisit.clinicianName || 'N/A'}</span></div>
+                      <div className="hvp-info-item"><span className="hvp-info-label">Title</span><span className="hvp-info-value">{viewingVisit.clinicianTitle || 'N/A'}</span></div>
+                      {viewingVisit.nextVisitDate && <div className="hvp-info-item"><span className="hvp-info-label">Next Visit</span><span className="hvp-info-value">{viewingVisit.nextVisitDate}</span></div>}
+                    </div>
+                  </div>
                 </div>
-              )}
-              {viewingVisit.symptomNotes && (
-                <div className="hvp-detail-section" style={{marginTop: '1rem'}}>
-                  <h4>Symptom Notes</h4>
-                  <p className="hvp-narrative">{viewingVisit.symptomNotes}</p>
+
+                {/* A3: Vitals Card with Conditional Highlighting */}
+                <div className="hvp-section-card">
+                  <div className="hvp-section-header hvp-section-red">
+                    <Activity size={16} /> Vitals
+                  </div>
+                  <div className="hvp-section-body">
+                    <div className="hvp-vitals-grid">
+                      <div className="hvp-vital-item">
+                        <span className="hvp-vital-label">BP</span>
+                        <span className="hvp-vital-value">{viewingVisit.bpSystolic && viewingVisit.bpDiastolic ? `${viewingVisit.bpSystolic}/${viewingVisit.bpDiastolic}` : 'N/A'}</span>
+                      </div>
+                      <div className={`hvp-vital-item${Number(viewingVisit.heartRate) > 100 || Number(viewingVisit.heartRate) < 60 ? ' hvp-vital-warn' : ''}`}>
+                        <span className="hvp-vital-label">HR</span>
+                        <span className="hvp-vital-value">{viewingVisit.heartRate ? `${viewingVisit.heartRate} bpm` : 'N/A'}</span>
+                      </div>
+                      <div className={`hvp-vital-item${Number(viewingVisit.respiratoryRate) > 24 ? ' hvp-vital-warn' : ''}`}>
+                        <span className="hvp-vital-label">RR</span>
+                        <span className="hvp-vital-value">{viewingVisit.respiratoryRate ? `${viewingVisit.respiratoryRate} /min` : 'N/A'}</span>
+                      </div>
+                      <div className={`hvp-vital-item${Number(viewingVisit.temperature) > 100.4 ? ' hvp-vital-alert' : ''}`}>
+                        <span className="hvp-vital-label">Temp</span>
+                        <span className="hvp-vital-value">{viewingVisit.temperature ? `${viewingVisit.temperature}°F` : 'N/A'}</span>
+                      </div>
+                      <div className={`hvp-vital-item${Number(viewingVisit.o2Saturation) < 92 ? ' hvp-vital-alert' : ''}`}>
+                        <span className="hvp-vital-label">O2 Sat</span>
+                        <span className="hvp-vital-value">{viewingVisit.o2Saturation ? `${viewingVisit.o2Saturation}%` : 'N/A'}</span>
+                      </div>
+                      <div className={`hvp-vital-item${Number(viewingVisit.painLevel) > 6 ? ' hvp-vital-alert' : ''}`}>
+                        <span className="hvp-vital-label">Pain</span>
+                        <span className="hvp-vital-value">{viewingVisit.painLevel != null ? `${viewingVisit.painLevel}/10` : 'N/A'}</span>
+                      </div>
+                      <div className="hvp-vital-item">
+                        <span className="hvp-vital-label">Weight</span>
+                        <span className="hvp-vital-value">{viewingVisit.weight ? `${viewingVisit.weight} lbs` : 'N/A'}</span>
+                      </div>
+                      <div className="hvp-vital-item">
+                        <span className="hvp-vital-label">PPS</span>
+                        <span className="hvp-vital-value">{viewingVisit.performanceScore ? `${viewingVisit.performanceScore}%` : 'N/A'}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              )}
+
+                {/* A4: Functional Status Card */}
+                <div className="hvp-section-card">
+                  <div className="hvp-section-header hvp-section-green">
+                    <User size={16} /> Functional Status
+                  </div>
+                  <div className="hvp-section-body">
+                    <div className="hvp-func-group">
+                      <span className="hvp-func-group-label">ADL Assessment</span>
+                      <div className="hvp-chip-row">
+                        {[
+                          { key: 'adlBathing', label: 'Bathing' },
+                          { key: 'adlDressing', label: 'Dressing' },
+                          { key: 'adlToileting', label: 'Toileting' },
+                          { key: 'adlTransferring', label: 'Transfers' },
+                          { key: 'adlFeeding', label: 'Feeding' },
+                        ].map(adl => {
+                          const val = viewingVisit[adl.key];
+                          const chipClass = !val ? 'hvp-chip-neutral' :
+                            val === 'Independent' ? 'hvp-chip-green' :
+                            val === 'Total Dependence' ? 'hvp-chip-red' : 'hvp-chip-yellow';
+                          return (
+                            <span key={adl.key} className={`hvp-chip ${chipClass}`} title={val || 'Not recorded'}>
+                              {adl.label}: {val || 'N/A'}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div className="hvp-func-badges">
+                      <div className="hvp-func-badge">
+                        <span className="hvp-func-badge-label">Mobility</span>
+                        <span className={`hvp-func-badge-value${viewingVisit.mobilityStatus === 'Bedbound' ? ' hvp-badge-red' : viewingVisit.mobilityStatus === 'Wheelchair' ? ' hvp-badge-yellow' : ''}`}>
+                          {viewingVisit.mobilityStatus || 'N/A'}
+                        </span>
+                      </div>
+                      <div className="hvp-func-badge">
+                        <span className="hvp-func-badge-label">Fall Risk</span>
+                        <span className={`hvp-func-badge-value${viewingVisit.fallRisk === 'High' ? ' hvp-badge-red' : viewingVisit.fallRisk === 'Moderate' ? ' hvp-badge-yellow' : ''}`}>
+                          {viewingVisit.fallRisk || 'N/A'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* A5: Symptom Management Card */}
+                <div className="hvp-section-card">
+                  <div className="hvp-section-header hvp-section-amber">
+                    <Thermometer size={16} /> Symptom Management
+                  </div>
+                  <div className="hvp-section-body">
+                    <div className="hvp-chip-row">
+                      {[
+                        { key: 'painManaged', label: 'Pain Managed', invert: true },
+                        { key: 'nauseaPresent', label: 'Nausea' },
+                        { key: 'dyspneaPresent', label: 'Dyspnea' },
+                        { key: 'anxietyPresent', label: 'Anxiety' },
+                        { key: 'fatiguePresent', label: 'Fatigue' },
+                        { key: 'constipationPresent', label: 'Constipation' },
+                        { key: 'edemaPresent', label: 'Edema' },
+                        { key: 'skinIssues', label: 'Skin Issues' },
+                      ].map(sym => {
+                        const present = sym.invert ? viewingVisit[sym.key] === false : viewingVisit[sym.key] === true;
+                        return (
+                          <span key={sym.key} className={`hvp-symptom-chip ${present ? 'hvp-symptom-active' : 'hvp-symptom-inactive'}`}>
+                            {present ? '●' : '○'} {sym.label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    {viewingVisit.symptomNotes && (
+                      <div className="hvp-symptom-notes">{viewingVisit.symptomNotes}</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* A6: Care Plan Card */}
+                <div className="hvp-section-card">
+                  <div className="hvp-section-header hvp-section-purple">
+                    <Heart size={16} /> Care Plan
+                  </div>
+                  <div className="hvp-section-body">
+                    <div className="hvp-care-checks">
+                      <span className={`hvp-care-check ${viewingVisit.goalsReviewed ? 'hvp-check-yes' : 'hvp-check-no'}`}>
+                        {viewingVisit.goalsReviewed ? <Check size={14} /> : <XCircle size={14} />}
+                        Goals Reviewed
+                      </span>
+                      <span className={`hvp-care-check ${viewingVisit.medicationsReviewed ? 'hvp-check-yes' : 'hvp-check-no'}`}>
+                        {viewingVisit.medicationsReviewed ? <Check size={14} /> : <XCircle size={14} />}
+                        Meds Reviewed
+                      </span>
+                    </div>
+                    {viewingVisit.educationProvided && (
+                      <div className="hvp-care-block"><span className="hvp-care-block-label">Education Provided</span><p>{viewingVisit.educationProvided}</p></div>
+                    )}
+                    {viewingVisit.interventions && (
+                      <div className="hvp-care-block"><span className="hvp-care-block-label">Interventions</span><p>{viewingVisit.interventions}</p></div>
+                    )}
+                    {viewingVisit.planChanges && (
+                      <div className="hvp-care-block"><span className="hvp-care-block-label">Plan Changes</span><p>{viewingVisit.planChanges}</p></div>
+                    )}
+                  </div>
+                </div>
+
+                {/* A7: Narrative Notes Card */}
+                {viewingVisit.narrativeNotes && (
+                  <div className="hvp-section-card">
+                    <div className="hvp-section-header hvp-section-blue">
+                      <ClipboardList size={16} /> Clinical Narrative
+                    </div>
+                    <div className="hvp-section-body">
+                      <blockquote className="hvp-narrative-block">{viewingVisit.narrativeNotes}</blockquote>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -513,33 +672,148 @@ const hvpStyles = `
     padding: 0;
   }
 
-  /* Detail view */
-  .hvp-detail-grid {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;
+  /* Detail view — Patient Header Bar (A2) */
+  .hvp-detail-patient-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.875rem 1.5rem;
+    background: var(--color-gray-50);
+    border-bottom: 1px solid var(--border-color);
+    flex-wrap: wrap; gap: 0.5rem;
   }
-  .hvp-detail-section h4 {
-    margin: 0 0 0.5rem; font-size: 0.8rem; font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.05em;
-    color: var(--color-gray-500);
-    border-bottom: 1px solid var(--color-gray-100); padding-bottom: 0.25rem;
+  .hvp-detail-patient-info { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+  .hvp-detail-patient-name { font-weight: 600; font-size: 1rem; color: var(--color-gray-900); }
+  .hvp-detail-patient-meta {
+    font-size: var(--font-size-xs); color: var(--color-gray-500);
+    padding: 0.125rem 0.5rem; background: var(--color-gray-100);
+    border-radius: var(--radius-sm);
   }
-  .hvp-detail-row {
-    font-size: var(--font-size-sm); color: var(--color-gray-700);
-    padding: 0.125rem 0;
+  .hvp-detail-patient-visit {
+    display: flex; align-items: center; gap: 0.375rem;
+    font-size: var(--font-size-sm); color: var(--color-gray-600);
   }
-  .hvp-detail-row span { color: var(--color-gray-500); }
-  .hvp-narrative {
-    font-size: var(--font-size-sm); color: var(--color-gray-700);
-    white-space: pre-wrap; background: var(--color-gray-50);
-    padding: 0.75rem; border-radius: var(--radius-md);
-    margin: 0;
+  .hvp-detail-type-badge {
+    padding: 0.125rem 0.625rem; font-size: var(--font-size-xs); font-weight: 500;
+    background: var(--scorecard-blue-bg, #eff6ff); color: var(--scorecard-blue-text, #2563eb);
+    border-radius: var(--radius-full, 9999px);
   }
 
+  /* Detail view — Card Layout (A1) */
+  .hvp-detail-cards { padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+  .hvp-section-card {
+    border: 1px solid var(--border-color); border-radius: var(--radius-lg);
+    overflow: hidden; background: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .hvp-section-header {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.5rem 1rem; font-size: var(--font-size-sm); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  .hvp-section-blue { background: var(--scorecard-blue-bg, #eff6ff); color: var(--scorecard-blue-text, #2563eb); }
+  .hvp-section-red { background: var(--scorecard-red-bg, #fef2f2); color: var(--scorecard-red-text, #ef4444); }
+  .hvp-section-green { background: var(--scorecard-green-bg, #ecfdf5); color: var(--scorecard-green-text, #10b981); }
+  .hvp-section-amber { background: var(--scorecard-amber-bg, #fffbeb); color: var(--scorecard-amber-text, #f59e0b); }
+  .hvp-section-purple { background: var(--scorecard-purple-bg, #f5f3ff); color: var(--scorecard-purple-text, #7c3aed); }
+  .hvp-section-body { padding: 1rem; }
+
+  /* Visit Info Grid */
+  .hvp-info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+  .hvp-info-item { display: flex; flex-direction: column; gap: 0.125rem; }
+  .hvp-info-label { font-size: var(--font-size-xs); color: var(--color-gray-500); text-transform: uppercase; letter-spacing: 0.05em; }
+  .hvp-info-value { font-size: var(--font-size-sm); font-weight: 500; color: var(--color-gray-800); }
+
+  /* Vitals Grid with Indicators (A3) */
+  .hvp-vitals-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
+  .hvp-vital-item {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 0.625rem 0.5rem; border-radius: var(--radius-md);
+    background: var(--color-gray-50); border: 1px solid var(--color-gray-100);
+    text-align: center; transition: var(--transition-normal);
+  }
+  .hvp-vital-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-gray-500); margin-bottom: 0.125rem; }
+  .hvp-vital-value { font-size: var(--font-size-sm); font-weight: 600; color: var(--color-gray-800); }
+  .hvp-vital-warn { background: #fffbeb; border-color: #fde68a; }
+  .hvp-vital-warn .hvp-vital-value { color: #92400e; }
+  .hvp-vital-alert { background: #fef2f2; border-color: #fecaca; }
+  .hvp-vital-alert .hvp-vital-value { color: #991b1b; }
+
+  /* Functional Status Chips (A4) */
+  .hvp-func-group { margin-bottom: 0.75rem; }
+  .hvp-func-group-label { font-size: var(--font-size-xs); color: var(--color-gray-500); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.375rem; }
+  .hvp-chip-row { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+  .hvp-chip {
+    display: inline-block; padding: 0.25rem 0.625rem; border-radius: var(--radius-full, 9999px);
+    font-size: var(--font-size-xs); font-weight: 500; white-space: nowrap;
+  }
+  .hvp-chip-green { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+  .hvp-chip-yellow { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+  .hvp-chip-red { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+  .hvp-chip-neutral { background: var(--color-gray-100); color: var(--color-gray-500); border: 1px solid var(--color-gray-200); }
+  .hvp-func-badges { display: flex; gap: 1rem; }
+  .hvp-func-badge { display: flex; flex-direction: column; gap: 0.125rem; }
+  .hvp-func-badge-label { font-size: var(--font-size-xs); color: var(--color-gray-500); text-transform: uppercase; letter-spacing: 0.05em; }
+  .hvp-func-badge-value {
+    display: inline-block; padding: 0.25rem 0.625rem; border-radius: var(--radius-md);
+    font-size: var(--font-size-sm); font-weight: 500;
+    background: var(--color-gray-100); color: var(--color-gray-700);
+  }
+  .hvp-badge-yellow { background: #fffbeb; color: #92400e; }
+  .hvp-badge-red { background: #fef2f2; color: #991b1b; }
+
+  /* Symptom Chips (A5) */
+  .hvp-symptom-chip {
+    display: inline-flex; align-items: center; gap: 0.25rem;
+    padding: 0.25rem 0.625rem; border-radius: var(--radius-full, 9999px);
+    font-size: var(--font-size-xs); font-weight: 500; white-space: nowrap;
+  }
+  .hvp-symptom-active { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+  .hvp-symptom-inactive { background: var(--color-gray-50); color: var(--color-gray-400); border: 1px solid var(--color-gray-200); }
+  .hvp-symptom-notes {
+    margin-top: 0.75rem; font-size: var(--font-size-sm); color: var(--color-gray-700);
+    background: var(--color-gray-50); padding: 0.625rem 0.875rem;
+    border-radius: var(--radius-md); white-space: pre-wrap;
+  }
+
+  /* Care Plan (A6) */
+  .hvp-care-checks { display: flex; gap: 1rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+  .hvp-care-check {
+    display: inline-flex; align-items: center; gap: 0.375rem;
+    padding: 0.375rem 0.75rem; border-radius: var(--radius-md);
+    font-size: var(--font-size-sm); font-weight: 500;
+  }
+  .hvp-check-yes { background: #ecfdf5; color: #065f46; }
+  .hvp-check-no { background: var(--color-gray-100); color: var(--color-gray-500); }
+  .hvp-care-block { margin-top: 0.625rem; }
+  .hvp-care-block-label {
+    font-size: var(--font-size-xs); color: var(--color-gray-500);
+    text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.25rem;
+  }
+  .hvp-care-block p {
+    margin: 0; font-size: var(--font-size-sm); color: var(--color-gray-700);
+    background: var(--color-gray-50); padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-md); white-space: pre-wrap;
+  }
+
+  /* Narrative Blockquote (A7) */
+  .hvp-narrative-block {
+    margin: 0; padding: 0.875rem 1rem; font-size: var(--font-size-sm);
+    color: var(--color-gray-700); white-space: pre-wrap;
+    background: var(--color-gray-50); border-left: 3px solid var(--color-primary);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    font-style: normal;
+  }
+
+  /* Responsive (A8) */
   @media (max-width: 768px) {
     .hvp-header { flex-direction: column; align-items: stretch; }
     .hvp-patient-select select { min-width: unset; width: 100%; }
     .hvp-profile-grid { grid-template-columns: repeat(2, 1fr); }
-    .hvp-detail-grid { grid-template-columns: 1fr; }
+    .hvp-detail-patient-bar { flex-direction: column; align-items: flex-start; }
+    .hvp-info-grid { grid-template-columns: repeat(2, 1fr); }
+    .hvp-vitals-grid { grid-template-columns: repeat(2, 1fr); }
+    .hvp-func-badges { flex-direction: column; }
+    .hvp-chip-row { gap: 0.25rem; }
+    .hvp-care-checks { flex-direction: column; gap: 0.5rem; }
   }
 `;
 
