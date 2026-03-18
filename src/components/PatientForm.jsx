@@ -3,6 +3,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { Info, Stethoscope } from 'lucide-react';
 
 const PatientForm = ({ patient, onSave, onCancel, onDelete, isLoading }) => {
   const [formData, setFormData] = useState({
@@ -166,7 +167,7 @@ const PatientForm = ({ patient, onSave, onCancel, onDelete, isLoading }) => {
           <div className="form-group">
             <label htmlFor="startingBenefitPeriod">
               Starting Benefit Period
-              <span className="info-icon" title="Which Medicare benefit period is this patient starting on?">ℹ️</span>
+              <span className="info-icon" title="Which Medicare benefit period is this patient starting on?"><Info size={14} /></span>
             </label>
             <select
               id="startingBenefitPeriod"
@@ -219,7 +220,7 @@ const PatientForm = ({ patient, onSave, onCancel, onDelete, isLoading }) => {
       {showF2FSection && (
         <div className="form-section f2f-section">
           <h3 className="form-section-title">
-            <span className="icon">👨‍⚕️</span>
+            <span className="icon"><Stethoscope size={18} /></span>
             Face-to-Face Encounter Required
           </h3>
           

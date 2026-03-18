@@ -18,6 +18,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getPatients } from '../services/patientService';
 import { formatDate } from '../services/certificationCalculations';
 import PatientModal from './PatientModal';
+import { AlertTriangle, Check, Circle, ClipboardList, FileText } from 'lucide-react';
 
 const CertificationsPage = () => {
   const { user } = useAuth();
@@ -129,37 +130,37 @@ const CertificationsPage = () => {
   // Get status badge
   const getStatusInfo = (cti) => {
     if (cti.isOverdue) {
-      return { 
-        label: `${Math.abs(cti.daysUntilCertEnd)} days overdue`, 
+      return {
+        label: `${Math.abs(cti.daysUntilCertEnd)} days overdue`,
         class: 'overdue',
-        icon: '⚠️'
+        icon: <AlertTriangle size={14} />
       };
     }
     if (cti.daysUntilCertEnd <= 3) {
-      return { 
-        label: `${cti.daysUntilCertEnd} days - Critical`, 
+      return {
+        label: `${cti.daysUntilCertEnd} days - Critical`,
         class: 'critical',
-        icon: '🔴'
+        icon: <Circle size={10} fill="var(--color-red-500, #ef4444)" stroke="none" />
       };
     }
     if (cti.daysUntilCertEnd <= 7) {
-      return { 
-        label: `${cti.daysUntilCertEnd} days - Action needed`, 
+      return {
+        label: `${cti.daysUntilCertEnd} days - Action needed`,
         class: 'action',
-        icon: '🟡'
+        icon: <Circle size={10} fill="var(--color-amber-500, #f59e0b)" stroke="none" />
       };
     }
     if (cti.daysUntilCertEnd <= 14) {
-      return { 
-        label: `${cti.daysUntilCertEnd} days`, 
+      return {
+        label: `${cti.daysUntilCertEnd} days`,
         class: 'upcoming',
-        icon: '🔵'
+        icon: <Circle size={10} fill="var(--color-blue-500, #3b82f6)" stroke="none" />
       };
     }
-    return { 
-      label: `${cti.daysUntilCertEnd} days`, 
+    return {
+      label: `${cti.daysUntilCertEnd} days`,
       class: 'normal',
-      icon: '⚪'
+      icon: <Circle size={10} fill="var(--color-gray-400, #9ca3af)" stroke="none" />
     };
   };
 
@@ -289,7 +290,7 @@ const CertificationsPage = () => {
       <div className="table-container">
         {filteredPatients.length === 0 ? (
           <div className="empty-state">
-            <span>📋</span>
+            <ClipboardList size={40} />
             <p>No certifications match your filters.</p>
           </div>
         ) : (
@@ -342,7 +343,7 @@ const CertificationsPage = () => {
                     <td>
                       {cti.requiresF2F ? (
                         cti.f2fCompleted ? (
-                          <span className="f2f-badge complete">✓ Complete</span>
+                          <span className="f2f-badge complete"><Check size={14} /> Complete</span>
                         ) : (
                           <span className="f2f-badge required">Required</span>
                         )
@@ -368,7 +369,7 @@ const CertificationsPage = () => {
 
       {/* Required Documents Info */}
       <div className="docs-info-card">
-        <h4>📄 Documents by Period Type</h4>
+        <h4><FileText size={18} style={{verticalAlign: 'middle', marginRight: '6px'}} />Documents by Period Type</h4>
         <div className="docs-grid">
           <div className="doc-period">
             <strong>Initial 90-Day (Period 1)</strong>

@@ -19,6 +19,7 @@ import { getPatients, addPatient, updatePatient, deletePatient } from '../servic
 import { formatDate } from '../services/certificationCalculations';
 import PatientModal from './PatientModal';
 import PatientChartView from './PatientChartView';
+import { Search, ClipboardList, AlertTriangle, Edit } from 'lucide-react';
 
 const PatientsPage = () => {
   const { user } = useAuth();
@@ -291,7 +292,7 @@ const PatientsPage = () => {
         <div className="toolbar-left">
           {/* Search */}
           <div className="search-box">
-            <span className="search-icon">🔍</span>
+            <span className="search-icon"><Search size={16} /></span>
             <input
               type="text"
               placeholder="Search by name, MR#, or physician..."
@@ -362,7 +363,7 @@ const PatientsPage = () => {
       <div className="table-container">
         {paginatedPatients.length === 0 ? (
           <div className="empty-state">
-            <span>📋</span>
+            <ClipboardList size={40} />
             <p>No patients found matching your criteria.</p>
             <button className="btn btn-primary" onClick={openAddModal}>
               + Add First Patient
@@ -417,7 +418,7 @@ const PatientsPage = () => {
                       {cti ? (
                         <span className={cti.isOverdue ? 'text-danger' : ''}>
                           {formatDate(cti.certificationEndDate)}
-                          {cti.isOverdue && ' ⚠️'}
+                          {cti.isOverdue && <> <AlertTriangle size={14} /></>}
                         </span>
                       ) : '—'}
                     </td>
@@ -433,14 +434,14 @@ const PatientsPage = () => {
                           onClick={() => setChartPatient(patient)}
                           title="View Chart"
                         >
-                          📋
+                          <ClipboardList size={16} />
                         </button>
                         <button
                           className="action-btn"
                           onClick={() => openEditModal(patient)}
                           title="Edit"
                         >
-                          ✏️
+                          <Edit size={16} />
                         </button>
                       </div>
                     </td>

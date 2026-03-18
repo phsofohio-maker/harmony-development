@@ -11,6 +11,7 @@
  */
 
 import { formatDate } from '../services/certificationCalculations';
+import { ClipboardList, AlertTriangle, Clock, Calendar } from 'lucide-react';
 
 const PatientTable = ({ patients, onPatientClick }) => {
   
@@ -18,7 +19,7 @@ const PatientTable = ({ patients, onPatientClick }) => {
   if (!patients || patients.length === 0) {
     return (
       <div className="empty-table">
-        <span className="empty-icon">📋</span>
+        <span className="empty-icon"><ClipboardList size={40} /></span>
         <p>No patients found matching your criteria.</p>
         <style>{`
           .empty-table {
@@ -84,7 +85,7 @@ const PatientTable = ({ patients, onPatientClick }) => {
     if (cti.isOverdue) {
       return (
         <span className="cert-status overdue">
-          ⚠️ {Math.abs(cti.daysUntilCertEnd)} days overdue
+          <AlertTriangle size={14} /> {Math.abs(cti.daysUntilCertEnd)} days overdue
         </span>
       );
     }
@@ -92,7 +93,7 @@ const PatientTable = ({ patients, onPatientClick }) => {
     if (cti.daysUntilCertEnd <= 7) {
       return (
         <span className="cert-status warning">
-          ⏰ {cti.daysUntilCertEnd} days left
+          <Clock size={14} /> {cti.daysUntilCertEnd} days left
         </span>
       );
     }
@@ -100,7 +101,7 @@ const PatientTable = ({ patients, onPatientClick }) => {
     if (cti.daysUntilCertEnd <= 14) {
       return (
         <span className="cert-status upcoming">
-          📅 {cti.daysUntilCertEnd} days
+          <Calendar size={14} /> {cti.daysUntilCertEnd} days
         </span>
       );
     }

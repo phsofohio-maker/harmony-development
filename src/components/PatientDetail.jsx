@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { getPatient, updatePatient, deletePatient } from '../services/patientService';
 import { formatDate } from '../services/certificationCalculations';
 import PatientForm from './PatientForm';
+import { Check, X, AlertTriangle } from 'lucide-react';
 
 const PatientDetail = () => {
   const { patientId } = useParams();
@@ -230,9 +231,9 @@ const PatientDetail = () => {
                     <div className="huv-label">HUV1 (Days 5-14)</div>
                     <div className="huv-window">{huv.huv1.windowText}</div>
                     <div className={`huv-status status-${huv.huv1.status}`}>
-                      {huv.huv1.completed ? '✓ Complete' : 
-                       huv.huv1.isOverdue ? '✗ Overdue' :
-                       huv.huv1.needsAction ? '⚠ Action Needed' : 'Upcoming'}
+                      {huv.huv1.completed ? <><Check size={14} /> Complete</> :
+                       huv.huv1.isOverdue ? <><X size={14} /> Overdue</> :
+                       huv.huv1.needsAction ? <><AlertTriangle size={14} /> Action Needed</> : 'Upcoming'}
                     </div>
                   </div>
                   
@@ -240,9 +241,9 @@ const PatientDetail = () => {
                     <div className="huv-label">HUV2 (Days 15-28)</div>
                     <div className="huv-window">{huv.huv2.windowText}</div>
                     <div className={`huv-status status-${huv.huv2.status}`}>
-                      {huv.huv2.completed ? '✓ Complete' : 
-                       huv.huv2.isOverdue ? '✗ Overdue' :
-                       huv.huv2.needsAction ? '⚠ Action Needed' : 'Upcoming'}
+                      {huv.huv2.completed ? <><Check size={14} /> Complete</> :
+                       huv.huv2.isOverdue ? <><X size={14} /> Overdue</> :
+                       huv.huv2.needsAction ? <><AlertTriangle size={14} /> Action Needed</> : 'Upcoming'}
                     </div>
                   </div>
                 </div>

@@ -21,6 +21,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getPatients, markHUV1Completed, markHUV2Completed } from '../services/patientService';
 import { formatDate } from '../services/certificationCalculations';
+import { Calendar, Check, CheckCircle } from 'lucide-react';
 
 const HUVPage = () => {
   const { user } = useAuth();
@@ -264,7 +265,7 @@ const HUVPage = () => {
       <div className="huv-table-container">
         {sortedPatients.length === 0 ? (
           <div className="empty-state">
-            <span>📅</span>
+            <Calendar size={40} />
             <p>No patients match the current filter.</p>
           </div>
         ) : (
@@ -294,7 +295,7 @@ const HUVPage = () => {
                       <StatusBadge status={huv?.huv1?.status} />
                       {huv?.huv1?.completed && huv?.huv1?.completedDate && (
                         <div className="completed-date">
-                          ✓ {formatDate(huv.huv1.completedDate)}
+                          <Check size={14} /> {formatDate(huv.huv1.completedDate)}
                         </div>
                       )}
                     </td>
@@ -305,7 +306,7 @@ const HUVPage = () => {
                       <StatusBadge status={huv?.huv2?.status} />
                       {huv?.huv2?.completed && huv?.huv2?.completedDate && (
                         <div className="completed-date">
-                          ✓ {formatDate(huv.huv2.completedDate)}
+                          <Check size={14} /> {formatDate(huv.huv2.completedDate)}
                         </div>
                       )}
                     </td>
@@ -327,7 +328,7 @@ const HUVPage = () => {
                         </button>
                       )}
                       {huv?.huv1?.completed && huv?.huv2?.completed && (
-                        <span className="all-complete">✓ All Complete</span>
+                        <span className="all-complete"><CheckCircle size={14} /> All Complete</span>
                       )}
                     </td>
                   </tr>
