@@ -169,12 +169,22 @@ If you didn't expect this invitation, you can safely ignore this email.
       `;
 
       // Send email
-      await transporter.sendMail({
+      const inviteMailInfo = await transporter.sendMail({
         from: `"Harmony Health" <${emailUser.value()}>`,
         to: inviteData.email,
         subject: `You're invited to join ${orgName} on Harmony`,
         text: emailText,
         html: emailHtml,
+      });
+
+      await db.collection('organizations').doc(orgId).collection('emailHistory').add({
+        type: 'invite',
+        subject: `You're invited to join ${orgName} on Harmony`,
+        recipients: [inviteData.email],
+        success: true,
+        sentAt: Timestamp.now(),
+        triggeredBy: inviteData.invitedBy,
+        messageId: inviteMailInfo?.messageId || null,
       });
 
       console.log(`Invite email sent to ${inviteData.email}`);

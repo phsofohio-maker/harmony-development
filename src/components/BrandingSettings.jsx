@@ -437,7 +437,7 @@ const BrandingSettings = () => {
           gap: 1.5rem;
         }
 
-        .branding-loading {
+        .branding-settings .branding-loading {
           display: flex;
           align-items: center;
           justify-content: center;
@@ -446,16 +446,15 @@ const BrandingSettings = () => {
           color: var(--color-gray-500);
         }
 
-        .spin {
-          animation: spin 1s linear infinite;
+        .branding-settings .spin {
+          animation: branding-spin 1s linear infinite;
         }
 
-        @keyframes spin {
+        @keyframes branding-spin {
           to { transform: rotate(360deg); }
         }
 
-        /* Message Banner */
-        .message-banner {
+        .branding-settings .message-banner {
           display: flex;
           align-items: center;
           gap: 0.5rem;
@@ -464,44 +463,42 @@ const BrandingSettings = () => {
           font-size: var(--font-size-sm);
         }
 
-        .message-banner.success {
+        .branding-settings .message-banner.success {
           background: var(--color-success-light);
           color: var(--color-success-dark);
         }
 
-        .message-banner.error {
+        .branding-settings .message-banner.error {
           background: var(--color-error-light);
           color: var(--color-error-dark);
         }
 
-        /* Grid Layout */
-        .branding-grid {
+        .branding-settings .branding-grid {
           display: grid;
           grid-template-columns: 1fr 320px;
           gap: 1.5rem;
         }
 
         @media (max-width: 900px) {
-          .branding-grid {
+          .branding-settings .branding-grid {
             grid-template-columns: 1fr;
           }
         }
 
-        /* Settings Sections */
-        .branding-controls {
+        .branding-settings .branding-controls {
           display: flex;
           flex-direction: column;
           gap: 1.5rem;
         }
 
-        .settings-section {
+        .branding-settings .settings-section {
           background: white;
           border: 1px solid var(--border-color);
           border-radius: var(--radius-xl);
           padding: 1.5rem;
         }
 
-        .section-header {
+        .branding-settings .section-header {
           display: flex;
           align-items: flex-start;
           gap: 0.75rem;
@@ -509,25 +506,24 @@ const BrandingSettings = () => {
           color: var(--color-gray-700);
         }
 
-        .section-header h3 {
+        .branding-settings .section-header h3 {
           margin: 0;
           font-size: var(--font-size-base);
           font-weight: var(--font-weight-semibold);
           color: var(--color-gray-900);
         }
 
-        .section-header p {
+        .branding-settings .section-header p {
           margin: 0.25rem 0 0;
           font-size: var(--font-size-sm);
           color: var(--color-gray-500);
         }
 
-        /* Logo Upload */
-        .logo-upload-area {
+        .branding-settings .logo-upload-area {
           margin-top: 0.5rem;
         }
 
-        .dropzone {
+        .branding-settings .dropzone {
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -542,28 +538,29 @@ const BrandingSettings = () => {
           transition: all var(--transition-fast);
         }
 
-        .dropzone:hover, .dropzone.active {
+        .branding-settings .dropzone:hover,
+        .branding-settings .dropzone.active {
           border-color: var(--color-primary);
           background: var(--color-primary-50);
           color: var(--color-primary);
         }
 
-        .dropzone.uploading {
+        .branding-settings .dropzone.uploading {
           pointer-events: none;
           opacity: 0.7;
         }
 
-        .dropzone-hint {
+        .branding-settings .dropzone-hint {
           font-size: var(--font-size-sm);
         }
 
-        .dropzone-specs {
+        .branding-settings .dropzone-specs {
           font-size: var(--font-size-xs);
           color: var(--color-gray-400);
           margin-top: 0.25rem;
         }
 
-        .logo-preview-container {
+        .branding-settings .logo-preview-container {
           display: flex;
           align-items: center;
           gap: 1rem;
@@ -572,7 +569,7 @@ const BrandingSettings = () => {
           border-radius: var(--radius-lg);
         }
 
-        .logo-preview-image {
+        .branding-settings .logo-preview-image {
           width: 64px;
           height: 64px;
           object-fit: contain;
@@ -581,12 +578,12 @@ const BrandingSettings = () => {
           padding: 0.25rem;
         }
 
-        .logo-actions {
+        .branding-settings .logo-actions {
           display: flex;
           gap: 0.75rem;
         }
 
-        .btn-text {
+        .branding-settings .btn-text {
           background: none;
           border: none;
           color: var(--color-primary);
@@ -595,28 +592,27 @@ const BrandingSettings = () => {
           padding: 0.25rem 0.5rem;
         }
 
-        .btn-text:hover {
+        .branding-settings .btn-text:hover {
           text-decoration: underline;
         }
 
-        .btn-text.danger {
+        .branding-settings .btn-text.danger {
           color: var(--color-error);
         }
 
-        /* Color Grid */
-        .color-grid {
+        .branding-settings .color-grid {
           display: grid;
           grid-template-columns: repeat(8, 1fr);
           gap: 0.5rem;
         }
 
         @media (max-width: 600px) {
-          .color-grid {
+          .branding-settings .color-grid {
             grid-template-columns: repeat(4, 1fr);
           }
         }
 
-        .color-swatch {
+        .branding-settings .color-swatch {
           aspect-ratio: 1;
           border: 2px solid transparent;
           border-radius: var(--radius-md);
@@ -630,44 +626,43 @@ const BrandingSettings = () => {
           min-height: 36px;
         }
 
-        .color-swatch:hover {
+        .branding-settings .color-swatch:hover {
           transform: scale(1.1);
           box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
 
-        .color-swatch.selected {
+        .branding-settings .color-swatch.selected {
           border-color: var(--color-gray-900);
           box-shadow: 0 0 0 2px white, 0 0 0 4px var(--swatch-color);
           transform: scale(1.05);
         }
 
-        /* Custom Hex Input */
-        .custom-color-section {
+        .branding-settings .custom-color-section {
           margin-top: 1.25rem;
           padding-top: 1.25rem;
           border-top: 1px solid var(--color-gray-100);
         }
 
-        .custom-color-section label {
+        .branding-settings .custom-color-section label {
           display: block;
           margin-bottom: 0.5rem;
           font-size: var(--font-size-sm);
           color: var(--color-gray-600);
         }
 
-        .hex-input-row {
+        .branding-settings .hex-input-row {
           display: flex;
           gap: 0.75rem;
           align-items: center;
         }
 
-        .hex-input-wrapper {
+        .branding-settings .hex-input-wrapper {
           position: relative;
           flex: 1;
           max-width: 160px;
         }
 
-        .hex-icon {
+        .branding-settings .hex-icon {
           position: absolute;
           left: 0.75rem;
           top: 50%;
@@ -675,7 +670,7 @@ const BrandingSettings = () => {
           color: var(--color-gray-400);
         }
 
-        .hex-input-wrapper input {
+        .branding-settings .hex-input-wrapper input {
           width: 100%;
           padding: 0.5rem 0.75rem 0.5rem 2rem;
           border: 1px solid var(--color-gray-300);
@@ -685,27 +680,27 @@ const BrandingSettings = () => {
           text-transform: uppercase;
         }
 
-        .hex-input-wrapper input:focus {
+        .branding-settings .hex-input-wrapper input:focus {
           outline: none;
           border-color: var(--color-primary);
           box-shadow: 0 0 0 3px var(--color-primary-100);
         }
 
-        .color-preview-box {
+        .branding-settings .color-preview-box {
           width: 36px;
           height: 36px;
           border-radius: var(--radius-md);
           border: 2px solid var(--color-gray-200);
         }
 
-        .hex-error {
+        .branding-settings .hex-error {
           display: block;
           margin-top: 0.375rem;
           font-size: var(--font-size-xs);
           color: var(--color-error);
         }
 
-        .color-info {
+        .branding-settings .color-info {
           display: flex;
           justify-content: space-between;
           align-items: center;
@@ -714,18 +709,18 @@ const BrandingSettings = () => {
           border-top: 1px solid var(--color-gray-100);
         }
 
-        .color-name {
+        .branding-settings .color-name {
           font-weight: var(--font-weight-medium);
           color: var(--color-gray-700);
         }
 
-        .color-value {
+        .branding-settings .color-value {
           font-family: var(--font-family-mono);
           font-size: var(--font-size-sm);
           color: var(--color-gray-500);
         }
 
-        .save-btn {
+        .branding-settings .save-btn {
           display: flex;
           align-items: center;
           justify-content: center;
@@ -735,7 +730,7 @@ const BrandingSettings = () => {
           padding: 0.75rem;
         }
 
-        .btn-primary {
+        .branding-settings .btn-primary {
           background: var(--color-primary);
           color: white;
           border: none;
@@ -746,17 +741,16 @@ const BrandingSettings = () => {
           transition: background var(--transition-fast);
         }
 
-        .btn-primary:hover:not(:disabled) {
+        .branding-settings .btn-primary:hover:not(:disabled) {
           background: var(--color-primary-hover);
         }
 
-        .btn-primary:disabled {
+        .branding-settings .btn-primary:disabled {
           opacity: 0.7;
           cursor: not-allowed;
         }
 
-        /* Preview Panel */
-        .branding-preview {
+        .branding-settings .branding-preview {
           background: var(--color-gray-100);
           border-radius: var(--radius-xl);
           overflow: hidden;
@@ -765,7 +759,7 @@ const BrandingSettings = () => {
           top: 1.5rem;
         }
 
-        .preview-header {
+        .branding-settings .preview-header {
           padding: 0.75rem 1rem;
           background: var(--color-gray-200);
           font-size: var(--font-size-sm);
@@ -773,15 +767,14 @@ const BrandingSettings = () => {
           color: var(--color-gray-600);
         }
 
-        .preview-container {
+        .branding-settings .preview-container {
           display: flex;
           padding: 1rem;
           gap: 0.5rem;
           min-height: 280px;
         }
 
-        /* Mini Sidebar */
-        .preview-sidebar {
+        .branding-settings .preview-sidebar {
           width: 120px;
           border-radius: var(--radius-md);
           padding: 0.75rem 0.5rem;
@@ -791,7 +784,7 @@ const BrandingSettings = () => {
           gap: 0.5rem;
         }
 
-        .preview-logo-area {
+        .branding-settings .preview-logo-area {
           display: flex;
           align-items: center;
           gap: 0.375rem;
@@ -803,20 +796,20 @@ const BrandingSettings = () => {
           margin-bottom: 0.25rem;
         }
 
-        .preview-logo-img {
+        .branding-settings .preview-logo-img {
           width: 20px;
           height: 20px;
           object-fit: contain;
           border-radius: 2px;
         }
 
-        .preview-nav {
+        .branding-settings .preview-nav {
           display: flex;
           flex-direction: column;
           gap: 0.25rem;
         }
 
-        .preview-nav-item {
+        .branding-settings .preview-nav-item {
           display: flex;
           align-items: center;
           gap: 0.375rem;
@@ -826,12 +819,11 @@ const BrandingSettings = () => {
           color: rgba(255,255,255,0.7);
         }
 
-        .preview-nav-item.active {
+        .branding-settings .preview-nav-item.active {
           color: white;
         }
 
-        /* Mini Content */
-        .preview-content {
+        .branding-settings .preview-content {
           flex: 1;
           background: white;
           border-radius: var(--radius-md);
@@ -841,7 +833,7 @@ const BrandingSettings = () => {
           gap: 0.75rem;
         }
 
-        .preview-scorecard {
+        .branding-settings .preview-scorecard {
           display: flex;
           align-items: center;
           gap: 0.5rem;
@@ -851,7 +843,7 @@ const BrandingSettings = () => {
           border-radius: var(--radius-md);
         }
 
-        .preview-scorecard-icon {
+        .branding-settings .preview-scorecard-icon {
           width: 28px;
           height: 28px;
           border-radius: var(--radius-md);
@@ -860,28 +852,28 @@ const BrandingSettings = () => {
           justify-content: center;
         }
 
-        .preview-scorecard-data {
+        .branding-settings .preview-scorecard-data {
           display: flex;
           flex-direction: column;
         }
 
-        .preview-value {
+        .branding-settings .preview-value {
           font-size: 0.875rem;
           font-weight: var(--font-weight-bold);
           line-height: 1;
         }
 
-        .preview-label {
+        .branding-settings .preview-label {
           font-size: 0.5625rem;
           color: var(--color-gray-500);
         }
 
-        .preview-buttons {
+        .branding-settings .preview-buttons {
           display: flex;
           gap: 0.5rem;
         }
 
-        .preview-btn {
+        .branding-settings .preview-btn {
           padding: 0.375rem 0.625rem;
           border-radius: 4px;
           font-size: 0.5625rem;
@@ -889,17 +881,17 @@ const BrandingSettings = () => {
           cursor: default;
         }
 
-        .preview-btn.primary {
+        .branding-settings .preview-btn.primary {
           border: none;
           color: white;
         }
 
-        .preview-btn.secondary {
+        .branding-settings .preview-btn.secondary {
           background: white;
           border: 1px solid;
         }
 
-        .preview-link {
+        .branding-settings .preview-link {
           font-size: 0.625rem;
           text-decoration: underline;
         }

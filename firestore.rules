@@ -85,6 +85,13 @@ service cloud.firestore {
         // Managed by Cloud Functions (createInvite, cancelInvite)
         allow write: if false;
       }
+
+      // ── Email History sub-collection ──────────────────────────
+      match /emailHistory/{entryId} {
+        allow read: if isOrgAdmin(orgId);
+        // Cloud Functions write via Admin SDK (bypasses rules)
+        allow write: if false;
+      }
     }
   }
 }

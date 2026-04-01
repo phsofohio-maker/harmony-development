@@ -169,7 +169,7 @@ async function sendCertificationEmail(transporter, orgSettings, patients, emailU
     </html>
   `;
 
-  await transporter.sendMail({
+  return transporter.sendMail({
     from: `"Harmony HCA" <${emailUser.value()}>`,
     to: emailList.join(','),
     subject,
@@ -240,7 +240,7 @@ async function sendF2FAlertEmail(transporter, orgSettings, patients, emailUser) 
     </html>
   `;
 
-  await transporter.sendMail({
+  return transporter.sendMail({
     from: `"Harmony HCA" <${emailUser.value()}>`,
     to: emailList.join(','),
     subject,

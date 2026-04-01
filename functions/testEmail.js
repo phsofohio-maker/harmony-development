@@ -5,6 +5,7 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const nodemailer = require('nodemailer');
 const { defineSecret } = require('firebase-functions/params');
+const { db, Timestamp } = require('./firebase');
 
 // Define secrets (must match declaration in index.js)
 const emailUser = defineSecret('EMAIL_USER');
@@ -56,6 +57,20 @@ exports.testEmail = onCall(
       };
 
       const info = await transporter.sendMail(mailOptions);
+
+      const orgId = request.auth.token.orgId;
+      if (orgId) {
+        await db.collection('organizations').doc(orgId).collection('emailHistory').add({
+          type: 'test_email',
+          subject: mailOptions.subject,
+          recipients: [recipient],
+          success: true,
+          sentAt: Timestamp.now(),
+          triggeredBy: request.auth.uid,
+          messageId: info.messageId || null,
+        });
+      }
+
       return { success: true, messageId: info.messageId };
 
     } catch (error) {

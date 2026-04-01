@@ -9,6 +9,7 @@ import { db } from './lib/firebase';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import LoginForm from './components/LoginForm';
+import InviteAcceptPage from './components/InviteAcceptPage';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import HUVPage from './components/HUVPage';
@@ -28,7 +29,24 @@ function AppContent() {
   const { user, userProfile, loading } = useAuth();
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  
+
+  // Invite flow state
+  const [inviteToken, setInviteToken] = useState(null);
+  const [inviteOrgId, setInviteOrgId] = useState(null);
+
+  // Detect invite URL params on mount
+  useEffect(() => {
+    if (window.location.pathname === '/invite') {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+      const org = params.get('org');
+      if (token && org) {
+        setInviteToken(token);
+        setInviteOrgId(org);
+      }
+    }
+  }, []);
+
   // Onboarding state
   const [showOnboardingWizard, setShowOnboardingWizard] = useState(false);
   const [showWelcomeTour, setShowWelcomeTour] = useState(false);
@@ -106,6 +124,9 @@ function AppContent() {
   }
 
   if (!user) {
+    if (inviteToken && inviteOrgId) {
+      return <InviteAcceptPage token={inviteToken} orgId={inviteOrgId} />;
+    }
     return <LoginForm />;
   }
 

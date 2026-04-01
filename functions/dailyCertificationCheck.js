@@ -1,5 +1,5 @@
 const { onSchedule } = require('firebase-functions/v2/scheduler');
-const { db, emailUser, emailPass } = require('./firebase');
+const { db, emailUser, emailPass, Timestamp } = require('./firebase');
 const { 
   calculatePatientCTI, 
   createTransporter, 
@@ -59,13 +59,31 @@ const dailyCertificationCheck = onSchedule({
         const transporter = await createTransporter(emailUser, emailPass);
         
         if (certificationAlerts.length > 0) {
-          await sendCertificationEmail(transporter, orgSettings, certificationAlerts, emailUser);
+          const certInfo = await sendCertificationEmail(transporter, orgSettings, certificationAlerts, emailUser);
           console.log(`Sent certification alert for ${certificationAlerts.length} patients`);
+          await db.collection('organizations').doc(orgId).collection('emailHistory').add({
+            type: 'certification_alert',
+            subject: `Certification Alert - ${certificationAlerts.length} Patient(s)`,
+            recipients: orgSettings.emailList || [],
+            success: true,
+            sentAt: Timestamp.now(),
+            triggeredBy: 'system',
+            messageId: certInfo?.messageId || null,
+          });
         }
-        
+
         if (f2fAlerts.length > 0) {
-          await sendF2FAlertEmail(transporter, orgSettings, f2fAlerts, emailUser);
+          const f2fInfo = await sendF2FAlertEmail(transporter, orgSettings, f2fAlerts, emailUser);
           console.log(`Sent F2F alert for ${f2fAlerts.length} patients`);
+          await db.collection('organizations').doc(orgId).collection('emailHistory').add({
+            type: 'certification_alert',
+            subject: `F2F Encounter Alert - ${f2fAlerts.length} Patient(s)`,
+            recipients: orgSettings.emailList || [],
+            success: true,
+            sentAt: Timestamp.now(),
+            triggeredBy: 'system',
+            messageId: f2fInfo?.messageId || null,
+          });
         }
       }
     }

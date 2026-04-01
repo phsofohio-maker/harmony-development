@@ -220,17 +220,17 @@ async function verifyDatabase() {
       });
     }
     
-    // ============ CHECK NOTIFICATION HISTORY ============
-    console.log('\n🔔 NOTIFICATION HISTORY\n');
-    
+    // ============ CHECK EMAIL HISTORY ============
+    console.log('\n🔔 EMAIL HISTORY\n');
+
     const notifsSnapshot = await db.collection('organizations')
       .doc('org_parrish')
-      .collection('notificationHistory')
+      .collection('emailHistory')
       .limit(5)
       .get();
-    
+
     if (notifsSnapshot.empty) {
-      console.log('⚠️  No notification history yet');
+      console.log('⚠️  No email history yet');
       console.log('   This is normal if automated emails haven\'t been sent');
     } else {
       console.log(`✅ Found ${notifsSnapshot.size} recent notification(s)`);

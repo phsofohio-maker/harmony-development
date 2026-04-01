@@ -1,5 +1,5 @@
 const { onSchedule } = require('firebase-functions/v2/scheduler');
-const { db, emailUser, emailPass } = require('./firebase');
+const { db, emailUser, emailPass, Timestamp } = require('./firebase');
 const { 
   calculatePatientCTI, 
   createTransporter, 
@@ -121,13 +121,23 @@ const weeklySummary = onSchedule({
         </html>
       `;
       
-      await transporter.sendMail({
+      const weeklyInfo = await transporter.sendMail({
         from: `"Harmony HCA" <${emailUser.value()}>`,
         to: emailList.join(','),
         subject: `📊 Weekly Summary - ${stats.upcomingCerts} Upcoming, ${stats.overdueCerts} Overdue`,
         html
       });
-      
+
+      await db.collection('organizations').doc(orgId).collection('emailHistory').add({
+        type: 'weekly_summary',
+        subject: `Weekly Summary - ${stats.upcomingCerts} Upcoming, ${stats.overdueCerts} Overdue`,
+        recipients: emailList,
+        success: true,
+        sentAt: Timestamp.now(),
+        triggeredBy: 'system',
+        messageId: weeklyInfo?.messageId || null,
+      });
+
       console.log(`Weekly summary sent for ${orgId}`);
     }
     
