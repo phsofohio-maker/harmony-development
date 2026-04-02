@@ -13,7 +13,18 @@
       "Bash(npm list:*)",
       "Bash(grep -n \"console\\\\.\\\\\\(log\\\\|error\\\\|warn\\\\\\)\" /home/user/harmony-dashboard/src/components/*.jsx)",
       "Bash(grep -n \"console\\\\.error\" /home/user/harmony-dashboard/src/components/*.jsx)",
-      "Bash(grep -n \"console.error\\\\|throw new\\\\|catch\" /home/user/harmony-dashboard/functions/*.js)"
+      "Bash(grep -n \"console.error\\\\|throw new\\\\|catch\" /home/user/harmony-dashboard/functions/*.js)",
+      "Bash(git fetch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(grep -l \"WelcomeTour\\\\|export.*WelcomeTour\" /home/user/harmony-dashboard/src/components/*.jsx)",
+      "Bash(ls -1 /home/user/harmony-dashboard/src/components/*.jsx)",
+      "Bash(ls -1 /home/user/harmony-dashboard/src/services/*.js)",
+      "Bash(grep -r \"useState\\\\|useEffect\\\\|useCallback\" /home/user/harmony-dashboard/src/components/*.jsx)",
+      "Bash(grep -r \"const.*message\\\\|setMessage\\\\|notification\\\\|toast\\\\|feedback\" /home/user/harmony-dashboard/src/components/*.jsx)",
+      "Bash(grep -n \"catch\" /home/user/harmony-dashboard/src/components/*.jsx)",
+      "Bash(npm run:*)",
+      "Bash(git push:*)"
     ]
   }
 }
