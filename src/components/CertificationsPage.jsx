@@ -15,13 +15,15 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { getPatients } from '../services/patientService';
 import { formatDate } from '../services/certificationCalculations';
 import PatientModal from './PatientModal';
 import { AlertTriangle, Check, Circle, ClipboardList, FileText } from 'lucide-react';
 
-const CertificationsPage = () => {
+const CertificationsPage = ({ onNavigate }) => {
   const { user } = useAuth();
+  const toast = useToast();
   const orgId = user?.customClaims?.orgId || 'org_parrish';
 
   // Data state
@@ -164,9 +166,13 @@ const CertificationsPage = () => {
     };
   };
 
-  // Handle document generation (placeholder)
+  // Navigate to Documents page for document generation
   const handleGenerateDocs = (patient) => {
-    alert(`Document generation for ${patient.name} will be available in the Documents page.\n\nRequired documents:\n${patient.compliance?.cti?.requiredDocuments?.join('\n') || 'N/A'}`);
+    if (onNavigate) {
+      onNavigate('documents');
+    } else {
+      toast.info('Navigate to the Documents page to generate documents');
+    }
   };
 
   // Open patient modal
@@ -312,7 +318,7 @@ const CertificationsPage = () => {
                 const statusInfo = getStatusInfo(cti);
                 
                 return (
-                  <tr key={patient.id} className={`status-row-${statusInfo.class}`}>
+                  <tr key={patient.id} className={`status-row-${statusInfo.class} row-clickable`}>
                     <td className="patient-cell">
                       <button 
                         className="patient-link"

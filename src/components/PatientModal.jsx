@@ -12,6 +12,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 import { formatDate } from '../services/certificationCalculations';
 import DiagnosisManager from './DiagnosisManager';
 import MedicationManager from './MedicationManager';
@@ -70,6 +71,8 @@ const EMPTY_FORM = {
 
 const PatientModal = ({ patient, onSave, onDelete, onClose, saving }) => {
   const [formData, setFormData] = useState({ ...EMPTY_FORM });
+  const [initialData, setInitialData] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('demographics');
 
@@ -163,6 +166,23 @@ const PatientModal = ({ patient, onSave, onDelete, onClose, saving }) => {
     });
   }, [patient]);
 
+  // Snapshot initial data for dirty-state detection
+  useEffect(() => {
+    // Delay snapshot slightly so form is fully populated
+    const timer = setTimeout(() => {
+      setInitialData(JSON.stringify(formData));
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [patient]);
+
+  // Guard against closing with unsaved changes
+  const handleClose = () => {
+    if (initialData && JSON.stringify(formData) !== initialData) {
+      if (!window.confirm('You have unsaved changes. Discard?')) return;
+    }
+    onClose();
+  };
+
   // ── Change handlers ───────────────────────────────────────────
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -204,9 +224,14 @@ const PatientModal = ({ patient, onSave, onDelete, onClose, saving }) => {
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (onDelete && patient?.id) {
-      onDelete(patient.id);
+      try {
+        setDeleting(true);
+        await onDelete(patient.id);
+      } finally {
+        setDeleting(false);
+      }
     }
   };
 
@@ -272,12 +297,12 @@ const PatientModal = ({ patient, onSave, onDelete, onClose, saving }) => {
 
   // ═════════════════════════════════════════════════════════════
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={handleClose}>
       <div className="modal-container wide" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="modal-header">
           <h2>{isEditing ? 'Edit Patient' : 'Add New Patient'}</h2>
-          <button className="close-btn" onClick={onClose}>&times;</button>
+          <button className="close-btn" onClick={handleClose}>&times;</button>
         </div>
 
         {/* Compliance Summary (when editing) */}
@@ -656,12 +681,12 @@ const PatientModal = ({ patient, onSave, onDelete, onClose, saving }) => {
           {/* Footer */}
           <div className="modal-footer">
             {isEditing && onDelete && (
-              <button type="button" className="btn btn-danger" onClick={handleDelete}>
-                Delete
+              <button type="button" className="btn btn-danger" onClick={handleDelete} disabled={deleting}>
+                {deleting ? <><Loader2 size={14} className="spin" /> Deleting...</> : 'Delete'}
               </button>
             )}
             <div className="footer-right">
-              <button type="button" className="btn btn-secondary" onClick={onClose}>
+              <button type="button" className="btn btn-secondary" onClick={handleClose}>
                 Cancel
               </button>
               <button type="submit" className="btn btn-primary" disabled={saving}>
@@ -856,8 +881,11 @@ const PatientModal = ({ patient, onSave, onDelete, onClose, saving }) => {
         .btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
         .btn-secondary { background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; }
         .btn-secondary:hover { background: #e5e7eb; }
-        .btn-danger { background: #fee2e2; color: #991b1b; }
-        .btn-danger:hover { background: #fecaca; }
+        .btn-danger { background: #fee2e2; color: #991b1b; display: inline-flex; align-items: center; gap: 0.375rem; }
+        .btn-danger:hover:not(:disabled) { background: #fecaca; }
+        .btn-danger:disabled { opacity: 0.6; cursor: not-allowed; }
+        .spin { animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         @media (max-width: 640px) {
           .form-row { grid-template-columns: 1fr; }

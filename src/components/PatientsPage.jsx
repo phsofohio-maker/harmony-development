@@ -15,6 +15,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { getPatients, addPatient, updatePatient, deletePatient } from '../services/patientService';
 import { formatDate } from '../services/certificationCalculations';
 import PatientModal from './PatientModal';
@@ -23,6 +24,7 @@ import { Search, ClipboardList, AlertTriangle, Edit } from 'lucide-react';
 
 const PatientsPage = () => {
   const { user } = useAuth();
+  const toast = useToast();
   const orgId = user?.customClaims?.orgId || 'org_parrish';
 
   // Data state
@@ -217,7 +219,7 @@ const PatientsPage = () => {
       await loadPatients();
     } catch (err) {
       console.error('Error deleting patient:', err);
-      alert('Failed to delete patient');
+      toast.error('Failed to delete patient');
     } finally {
       setSaving(false);
     }
@@ -398,7 +400,7 @@ const PatientsPage = () => {
                 const urgency = patient.compliance?.overallUrgency || 'normal';
                 
                 return (
-                  <tr key={patient.id} className={`urgency-row-${urgency}`}>
+                  <tr key={patient.id} className={`urgency-row-${urgency} row-clickable`}>
                     <td className="name-cell">
                       <div className="patient-name-group">
                         <span className="patient-name">{patient.name}</span>

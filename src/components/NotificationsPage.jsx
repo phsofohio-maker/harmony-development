@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { httpsCallable } from 'firebase/functions';
 import { functions, db } from '../lib/firebase';
 import { doc, getDoc, updateDoc, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
@@ -17,6 +18,7 @@ import {
 
 const NotificationsPage = () => {
   const { user, userProfile } = useAuth();
+  const toast = useToast();
   const orgId = userProfile?.organizationId || 'org_parrish';
 
   const [settings, setSettings] = useState({
@@ -63,6 +65,7 @@ const NotificationsPage = () => {
       setEmailHistory(history);
     } catch (err) {
       console.error('Error loading notifications:', err);
+      toast.error('Failed to load notification settings');
     } finally {
       setLoading(false);
     }
@@ -82,8 +85,10 @@ const NotificationsPage = () => {
       await updateDoc(doc(db, 'organizations', orgId), { emailList: updated });
       setSettings(prev => ({ ...prev, emailList: updated }));
       setNewEmail('');
+      toast.success('Email recipient added');
     } catch (err) {
       console.error('Error adding email:', err);
+      toast.error('Failed to add email recipient');
     } finally {
       setSaving(false);
     }
@@ -95,8 +100,10 @@ const NotificationsPage = () => {
       const updated = settings.emailList.filter(e => e !== email);
       await updateDoc(doc(db, 'organizations', orgId), { emailList: updated });
       setSettings(prev => ({ ...prev, emailList: updated }));
+      toast.success('Email recipient removed');
     } catch (err) {
       console.error('Error removing email:', err);
+      toast.error('Failed to remove email recipient');
     } finally {
       setSaving(false);
     }
@@ -119,6 +126,7 @@ const NotificationsPage = () => {
       setSettings(prev => ({ ...prev, [key]: newValue }));
     } catch (err) {
       console.error('Error updating toggle:', err);
+      toast.error('Failed to update notification setting');
     } finally {
       setSaving(false);
     }
@@ -144,6 +152,7 @@ const NotificationsPage = () => {
       if (result.data.success) loadData();
     } catch (err) {
       console.error('Test email error:', err);
+      toast.error('Failed to send test email');
       setTestResult({
         success: false,
         message: 'Failed to send test email. Check console for details.'

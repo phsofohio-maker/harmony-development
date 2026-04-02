@@ -169,6 +169,10 @@
   background: var(--color-primary-hover);
 }
 
+.btn-primary:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
 .btn-primary:disabled {
   background: var(--color-gray-300);
   cursor: not-allowed;
@@ -189,6 +193,51 @@
 
 .btn-secondary:hover {
   background: var(--color-primary-50);
+}
+
+.btn-secondary:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Danger button */
+.btn-danger {
+  background: var(--color-error-light);
+  color: var(--color-error-dark);
+  border: none;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-danger:hover {
+  background: var(--color-error);
+  color: white;
+}
+
+.btn-danger:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Clickable table row */
+.row-clickable {
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.row-clickable:hover {
+  background: var(--color-gray-50);
+}
+
+.row-clickable:active {
+  background: var(--color-gray-100);
 }
 
 /* Link style */
@@ -218,4 +267,100 @@
 
 .card:hover {
   box-shadow: var(--shadow-card-hover);
+}
+
+.card:active {
+  transform: scale(0.995);
+}
+
+/* ===========================================
+   TOAST NOTIFICATIONS
+   =========================================== */
+.toast-stack {
+  position: fixed;
+  top: var(--spacing-lg);
+  right: var(--spacing-lg);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  pointer-events: auto;
+  animation: toast-in 0.3s ease;
+  min-width: 280px;
+  max-width: 420px;
+}
+
+.toast-icon { flex-shrink: 0; }
+
+.toast-message { flex: 1; }
+
+.toast-close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  transition: opacity var(--transition-fast);
+}
+
+.toast-close:hover { opacity: 1; }
+
+.toast-success {
+  background: var(--color-success-light);
+  color: var(--color-success-dark);
+  border: 1px solid var(--color-success);
+}
+
+.toast-success .toast-close { color: var(--color-success-dark); }
+
+.toast-info {
+  background: var(--color-info-light);
+  color: var(--color-info-dark);
+  border: 1px solid var(--color-info);
+}
+
+.toast-info .toast-close { color: var(--color-info-dark); }
+
+.toast-warning {
+  background: var(--color-warning-light);
+  color: var(--color-warning-dark);
+  border: 1px solid var(--color-warning);
+}
+
+.toast-warning .toast-close { color: var(--color-warning-dark); }
+
+.toast-error {
+  background: var(--color-error-light);
+  color: var(--color-error-dark);
+  border: 1px solid var(--color-error);
+}
+
+.toast-error .toast-close { color: var(--color-error-dark); }
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }

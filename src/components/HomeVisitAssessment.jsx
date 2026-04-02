@@ -80,13 +80,14 @@ const ADL_OPTIONS = ['Independent', 'Supervision', 'Limited Assist', 'Extensive 
 const MOBILITY_OPTIONS = ['Ambulatory', 'Ambulatory with Device', 'Wheelchair', 'Bedbound'];
 const VISIT_TYPES = ['Routine', 'PRN', 'Admission', 'Recertification', 'Discharge', 'Follow-Up'];
 
-const HomeVisitAssessment = ({ preSelectedPatientId, onComplete }) => {
+const HomeVisitAssessment = ({ preSelectedPatientId, onComplete, onCloseRef }) => {
   const { user, userProfile } = useAuth();
   const orgId = userProfile?.organizationId || user?.customClaims?.orgId || 'org_parrish';
 
   const [patients, setPatients] = useState([]);
   const [selectedPatientId, setSelectedPatientId] = useState(preSelectedPatientId || '');
   const [assessment, setAssessment] = useState({ ...EMPTY_ASSESSMENT });
+  const [initialAssessment, setInitialAssessment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -110,6 +111,35 @@ const HomeVisitAssessment = ({ preSelectedPatientId, onComplete }) => {
   }, [orgId]);
 
   useEffect(() => { loadPatients(); }, [loadPatients]);
+
+  // Snapshot initial data for dirty-state detection
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setInitialAssessment(JSON.stringify(assessment));
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Check if form has unsaved changes
+  const isDirty = () => {
+    if (!initialAssessment) return false;
+    return JSON.stringify(assessment) !== initialAssessment;
+  };
+
+  // Guard against closing with unsaved changes
+  const handleGuardedClose = () => {
+    if (isDirty()) {
+      if (!window.confirm('You have unsaved changes. Discard?')) return;
+    }
+    onComplete?.();
+  };
+
+  // Expose guarded close to parent via ref callback
+  useEffect(() => {
+    if (onCloseRef) {
+      onCloseRef.current = handleGuardedClose;
+    }
+  });
 
   // Pre-fill clinician name from user profile
   useEffect(() => {

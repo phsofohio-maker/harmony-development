@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { getPatients } from '../services/patientService';
 import { formatDate } from '../services/certificationCalculations';
 import { httpsCallable } from 'firebase/functions';
@@ -60,6 +61,7 @@ const VISIT_TYPE_DOC_MAP = {
 
 const DocumentsPage = () => {
   const { user, userProfile } = useAuth();
+  const toast = useToast();
   const orgId = userProfile?.organizationId || 'org_parrish';
 
   // Data state
@@ -142,6 +144,7 @@ const DocumentsPage = () => {
         setAssessments(visits);
       } catch (err) {
         console.error('Error loading assessments:', err);
+        toast.error('Failed to load assessments');
       } finally {
         setLoadingAssessments(false);
       }

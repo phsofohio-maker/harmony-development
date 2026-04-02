@@ -8,8 +8,9 @@
  *   - "Start New Assessment" opens HomeVisitAssessment as a modal
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { getPatients } from '../services/patientService';
 import {
   collection,
@@ -41,6 +42,7 @@ import {
 
 const HomeVisitsPage = () => {
   const { user, userProfile } = useAuth();
+  const toast = useToast();
   const orgId = userProfile?.organizationId || user?.customClaims?.orgId || 'org_parrish';
 
   const [patients, setPatients] = useState([]);
@@ -50,6 +52,7 @@ const HomeVisitsPage = () => {
   const [visitsLoading, setVisitsLoading] = useState(false);
   const [showAssessmentModal, setShowAssessmentModal] = useState(false);
   const [viewingVisit, setViewingVisit] = useState(null);
+  const assessmentCloseRef = useRef(null);
 
   const selectedPatient = patients.find(p => p.id === selectedPatientId);
 
@@ -61,10 +64,11 @@ const HomeVisitsPage = () => {
       setPatients(data);
     } catch (err) {
       console.error('Error loading patients:', err);
+      toast.error('Failed to load patients');
     } finally {
       setLoading(false);
     }
-  }, [orgId]);
+  }, [orgId, toast]);
 
   useEffect(() => { loadPatients(); }, [loadPatients]);
 
@@ -93,6 +97,7 @@ const HomeVisitsPage = () => {
       setVisits(data);
     } catch (err) {
       console.error('Error loading visits:', err);
+      toast.error('Failed to load visit history');
     } finally {
       setVisitsLoading(false);
     }
@@ -105,7 +110,7 @@ const HomeVisitsPage = () => {
     return Math.floor((Date.now() - d.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
   };
 
-  const handleAssessmentClose = () => {
+  const handleAssessmentClose = (skipGuard = false) => {
     setShowAssessmentModal(false);
     // Refresh visits list
     if (selectedPatientId) loadVisits();
@@ -278,7 +283,7 @@ const HomeVisitsPage = () => {
           <div className="hvp-modal">
             <div className="hvp-modal-header">
               <h3>New Home Visit Assessment</h3>
-              <button className="hvp-modal-close" onClick={handleAssessmentClose}>
+              <button className="hvp-modal-close" onClick={() => assessmentCloseRef.current ? assessmentCloseRef.current() : handleAssessmentClose()}>
                 <X size={20} />
               </button>
             </div>
@@ -286,6 +291,7 @@ const HomeVisitsPage = () => {
               <HomeVisitAssessment
                 preSelectedPatientId={selectedPatientId}
                 onComplete={handleAssessmentClose}
+                onCloseRef={assessmentCloseRef}
               />
             </div>
           </div>

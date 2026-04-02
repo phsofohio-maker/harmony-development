@@ -8,6 +8,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from './lib/firebase';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { ToastProvider } from './contexts/ToastContext';
 import LoginForm from './components/LoginForm';
 import InviteAcceptPage from './components/InviteAcceptPage';
 import Sidebar from './components/Sidebar';
@@ -174,7 +175,7 @@ function AppContent() {
       case 'patients':
         return <PatientsPage />;
       case 'certifications':
-        return <CertificationsPage />;
+        return <CertificationsPage onNavigate={setCurrentPage} />;
       case 'huv':
         return <HUVPage />;
       case 'documents':
@@ -192,6 +193,7 @@ function AppContent() {
 
   return (
     <ThemeProvider orgId={orgId}>
+    <ToastProvider>
       {/* Onboarding Wizard for new org admins */}
       {showOnboardingWizard && (
         <OnboardingWizard
@@ -248,6 +250,7 @@ function AppContent() {
           }
         }
       `}</style>
+    </ToastProvider>
     </ThemeProvider>
   );
 }

@@ -15,6 +15,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { getPatients, getDashboardStats, addPatient, updatePatient, deletePatient } from '../services/patientService';
 import Scorecards from './Scorecards';
 import PatientTable from './PatientTable';
@@ -25,6 +26,7 @@ import {
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const toast = useToast();
   
   // Data state
   const [patients, setPatients] = useState([]);
@@ -153,7 +155,7 @@ const Dashboard = () => {
       await loadData();
     } catch (err) {
       console.error('Error deleting patient:', err);
-      alert('Failed to delete patient');
+      toast.error('Failed to delete patient');
     } finally {
       setSaving(false);
     }

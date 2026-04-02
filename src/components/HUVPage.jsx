@@ -19,12 +19,14 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { getPatients, markHUV1Completed, markHUV2Completed } from '../services/patientService';
 import { formatDate } from '../services/certificationCalculations';
 import { Calendar, Check, CheckCircle } from 'lucide-react';
 
 const HUVPage = () => {
   const { user } = useAuth();
+  const toast = useToast();
   const orgId = user?.customClaims?.orgId || 'org_parrish';
 
   // Data state
@@ -130,10 +132,11 @@ const HUVPage = () => {
       }
 
       closeMarkComplete();
+      toast.success(`${markingComplete.huvType.toUpperCase()} marked complete`);
       await loadPatients(); // Refresh data
     } catch (err) {
       console.error('Error marking complete:', err);
-      alert('Failed to mark as complete. Please try again.');
+      toast.error('Failed to mark as complete. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -285,7 +288,7 @@ const HUVPage = () => {
               {sortedPatients.map(patient => {
                 const huv = patient.compliance?.huv;
                 return (
-                  <tr key={patient.id}>
+                  <tr key={patient.id} className="row-clickable">
                     <td className="patient-name">{patient.name}</td>
                     <td className="soc-date">{formatDate(patient.startOfCare)}</td>
                     <td className="window-cell">

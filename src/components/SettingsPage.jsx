@@ -731,7 +731,7 @@ const SettingsPage = () => {
                   {settings.emailList.map(email => (
                     <div key={email} className="email-tag">
                       <span>{email}</span>
-                      <button onClick={() => removeEmail(email)} aria-label="Remove email">
+                      <button onClick={() => removeEmail(email)} aria-label="Remove email" disabled={saving}>
                         <X size={14} />
                       </button>
                     </div>
